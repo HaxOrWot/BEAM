@@ -1,35 +1,35 @@
 import React from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="py-20 text-center max-w-lg mx-auto">
-      <div className="inline-flex items-center justify-center p-3 border border-surface-high bg-surface-lowest text-primary mb-4">
-        <AlertTriangle size={24} />
+    <div className="px-margin py-space-xl flex flex-col items-center justify-center text-center min-h-[70vh]">
+      <div className="w-16 h-16 bg-surface-container border border-outline-variant flex items-center justify-center text-primary mb-4">
+        <span className="material-symbols-outlined text-[36px]">error</span>
       </div>
-      <div className="font-mono text-xs text-outline uppercase tracking-widest mb-1">
-        ERROR_SOCKET_NOT_CONNECTED
-      </div>
-      <h1 className="text-2xl md:text-3xl font-semibold text-primary mb-3">
-        404 — Peer Endpoint Not Found
+
+      <span className="font-label-caps text-label-caps uppercase text-outline tracking-widest mb-1">
+        ERROR_SOCKET_NOT_CONNECTED // 404
+      </span>
+      <h1 className="font-display-lg text-display-lg uppercase tracking-tight text-primary font-semibold mb-3">
+        PEER ENDPOINT NOT FOUND
       </h1>
-      <p className="text-xs text-on-surface-variant leading-relaxed mb-6">
-        SYN packet dispatched to an unmapped socket descriptor or the target mesh node has severed peering. Verify the route in the topology inspector.
+      <p className="font-body-lg text-body-lg text-on-surface-variant max-w-lg mb-6 leading-relaxed">
+        SYN packet dispatched to an unmapped socket descriptor or remote mesh node has disconnected from the mesh topology.
       </p>
 
-      <div className="flex items-center justify-center gap-3">
-        <Link href="/">
-          <Button variant="primary" size="md">
-            <ArrowLeft size={12} />
-            Return to Dashboard
-          </Button>
+      <div className="flex items-center gap-space-sm">
+        <Link
+          href="/"
+          className="px-space-md py-2.5 bg-primary text-black font-headline-sm text-headline-sm uppercase tracking-wider font-semibold hover:bg-neutral-200 transition-colors"
+        >
+          Return to Console
         </Link>
-        <Link href="/peers">
-          <Button variant="secondary" size="md">
-            Inspect Mesh Topology
-          </Button>
+        <Link
+          href="/peers"
+          className="px-space-md py-2.5 bg-surface-container border border-outline-variant text-primary font-headline-sm text-headline-sm uppercase tracking-wider hover:bg-surface-container-high transition-colors"
+        >
+          Inspect Mesh Topology
         </Link>
       </div>
     </div>

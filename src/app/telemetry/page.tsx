@@ -1,30 +1,24 @@
 import React from "react";
 import { SocketStateStats } from "@/components/telemetry/SocketStateStats";
 import { AuditLogTable } from "@/components/telemetry/AuditLogTable";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Card } from "@/components/ui/Card";
 
 export default function TelemetryPage() {
   return (
-    <div>
-      <SectionHeader
-        title="Socket Telemetry & Audit Trail"
-        tag="KERNEL OBSERVABILITY"
-      />
+    <div className="px-margin py-space-lg flex flex-col gap-space-xl">
+      <div className="bg-surface-container-lowest p-space-xl border border-outline-variant flex flex-col gap-space-xs shadow-xl">
+        <span className="font-label-caps text-label-caps uppercase text-outline tracking-widest">
+          KERNEL OBSERVABILITY // BBR v3
+        </span>
+        <h1 className="font-display-lg text-display-lg uppercase tracking-tight text-primary font-semibold">
+          SOCKET TELEMETRY &amp; AUDIT TRAIL
+        </h1>
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+          Sub-millisecond TCP packet pacing diagnostics, selective ACK counters, and immutable cryptographically signed audit logs.
+        </p>
+      </div>
 
       <SocketStateStats />
       <AuditLogTable />
-
-      <div className="mt-6">
-        <Card variant="low">
-          <div className="font-mono text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-            Deterministic Kernel Pacing
-          </div>
-          <p className="text-xs text-on-surface-variant leading-relaxed">
-            PROTO-TCP implements precision TCP pacing with BBRv3 congestion control directly in kernel space. Every socket stream is monitored with microsecond packet inter-arrival timestamps to prevent bufferbloat and guarantee peak 10GbE wire speeds.
-          </p>
-        </Card>
-      </div>
     </div>
   );
 }

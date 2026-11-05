@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Button } from "../ui/Button";
-import { Shield, Eye, EyeOff, KeyRound, Terminal, Key } from "lucide-react";
 
 export const AuthCard: React.FC = () => {
   const [method, setMethod] = useState<"ed25519" | "daemon">("ed25519");
@@ -13,36 +11,38 @@ export const AuthCard: React.FC = () => {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    setStatusMsg("Cryptographic identity verified. Kernel node session unlocked.");
+    setStatusMsg("Cryptographic identity verified. Kernel node session granted.");
   };
 
   return (
-    <div className="max-w-md mx-auto bg-surface-low border border-surface-high p-6 my-8">
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <span className="w-2.5 h-2.5 bg-primary" />
-        <span className="font-mono text-sm font-semibold text-primary uppercase tracking-widest">
-          PROTO/TCP NODE AUTH
-        </span>
+    <div className="max-w-md mx-auto bg-surface-container-lowest border border-outline-variant p-space-xl my-space-lg shadow-xl flex flex-col gap-space-md">
+      <div className="flex flex-col items-center text-center gap-space-xs">
+        <div className="w-10 h-10 bg-surface-container border border-outline-variant flex items-center justify-center text-primary mb-1">
+          <span className="material-symbols-outlined text-[24px]">key</span>
+        </div>
+        <h2 className="font-headline-sm text-headline-sm uppercase text-primary tracking-wider font-medium">
+          PROTO/TCP NODE AUTHENTICATION
+        </h2>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          Mutual cryptographic handshake verification for local kernel control.
+        </p>
       </div>
-      <p className="text-center font-mono text-[11px] text-outline mb-6">
-        Authenticate local management console via cryptographic key
-      </p>
 
-      {/* Method Tabs */}
-      <div className="grid grid-cols-2 gap-1 bg-surface-lowest p-1 border border-surface-high mb-4">
+      {/* Tabs */}
+      <div className="grid grid-cols-2 gap-1 bg-surface-container-low p-1 border border-outline-variant">
         <button
           type="button"
           onClick={() => {
             setMethod("ed25519");
             setCredential("ed25519_sk_8f7b2c90a1e34589d89ffac0132");
           }}
-          className={`py-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+          className={`py-1.5 font-label-caps text-label-caps uppercase tracking-wider transition-colors ${
             method === "ed25519"
               ? "bg-primary text-black font-semibold"
               : "text-outline hover:text-primary"
           }`}
         >
-          Ed25519 Key
+          Ed25519 Private Key
         </button>
         <button
           type="button"
@@ -50,66 +50,80 @@ export const AuthCard: React.FC = () => {
             setMethod("daemon");
             setCredential("/var/run/prototcp/daemon.sock");
           }}
-          className={`py-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+          className={`py-1.5 font-label-caps text-label-caps uppercase tracking-wider transition-colors ${
             method === "daemon"
               ? "bg-primary text-black font-semibold"
               : "text-outline hover:text-primary"
           }`}
         >
-          Daemon Socket
+          Daemon IPC Socket
         </button>
       </div>
 
-      <form onSubmit={handleAuth} className="space-y-4">
-        <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="font-mono text-[10px] text-outline uppercase">
-              {method === "ed25519" ? "SIGNING PRIVATE KEY (BASE64)" : "IPC SOCKET PATH"}
+      <form onSubmit={handleAuth} className="flex flex-col gap-space-md">
+        <div className="flex flex-col gap-space-xs">
+          <div className="flex justify-between items-center">
+            <label className="font-label-caps text-label-caps uppercase text-outline">
+              {method === "ed25519" ? "SIGNING PRIVATE KEY (BASE64)" : "DAEMON IPC SOCKET PATH"}
             </label>
-            <span className="font-mono text-[9px] text-on-surface-variant">
+            <span className="font-label-caps text-label-caps uppercase text-on-surface-variant">
               {method === "ed25519" ? "CURVE25519" : "UNIX_DOMAIN"}
             </span>
           </div>
 
-          <div className="relative">
+          <div className="relative flex items-center bg-surface-container-low border border-outline-variant">
             <input
               type={showCred ? "text" : "password"}
               value={credential}
               onChange={(e) => setCredential(e.target.value)}
-              className="w-full bg-surface-lowest border border-surface-high px-3 py-2 pr-9 font-mono text-xs text-primary focus:border-primary outline-none"
+              className="bg-transparent font-telemetry-md text-telemetry-md text-primary w-full px-space-sm py-2.5 outline-none pr-10"
             />
             <button
               type="button"
               onClick={() => setShowCred(!showCred)}
-              className="absolute right-2.5 top-2.5 text-outline hover:text-primary"
+              className="absolute right-3 text-outline hover:text-primary"
             >
-              {showCred ? <EyeOff size={13} /> : <Eye size={13} />}
+              <span className="material-symbols-outlined text-[18px]">
+                {showCred ? "visibility_off" : "visibility"}
+              </span>
             </button>
           </div>
         </div>
 
-        <Button type="submit" variant="primary" size="md" className="w-full">
-          <KeyRound size={12} />
-          Authenticate Node Session
-        </Button>
+        {/* Gold button */}
+        <button
+          type="submit"
+          className="w-full py-2.5 font-headline-sm text-headline-sm uppercase tracking-wider flex items-center justify-center gap-space-xs font-semibold"
+          style={{
+            background: "linear-gradient(135deg, rgb(223, 189, 105) 0%, rgb(197, 160, 89) 100%)",
+            color: "#131313",
+            border: "1px solid rgb(243, 229, 171)",
+            boxShadow: "rgba(212, 175, 55, 0.25) 0px 0px 16px",
+          }}
+        >
+          <span className="material-symbols-outlined text-[18px]">lock_open</span>
+          <span>Unlock Kernel Node Session</span>
+        </button>
       </form>
 
       {statusMsg && (
-        <div className="mt-4 p-2.5 bg-surface-highest border border-primary text-primary font-mono text-xs text-center">
+        <div className="p-space-sm bg-surface-container-high border border-primary text-primary font-mono text-xs text-center">
           {statusMsg}
         </div>
       )}
 
-      <div className="mt-6 pt-4 border-t border-surface-high/60 text-center space-y-2">
+      <div className="pt-space-xs border-t border-outline-variant flex flex-col items-center gap-space-xs text-center">
         <Link
           href="/auth/verify"
-          className="inline-flex items-center gap-1.5 font-mono text-xs text-secondary hover:text-primary hover:underline"
+          className="font-headline-sm text-headline-sm uppercase text-primary hover:underline flex items-center gap-space-xs"
+          style={{ color: "#DFBD69" }}
         >
-          <Key size={12} /> Or authenticate with FIDO2 / YubiKey &rarr;
+          <span className="material-symbols-outlined text-[16px]">touch_app</span>
+          <span>Authenticate with FIDO2 / YubiKey &rarr;</span>
         </Link>
-        <div className="font-mono text-[10px] text-outline">
-          Mutual TLS 1.3 &bull; Zero Plaintext Transmission
-        </div>
+        <span className="font-label-caps text-label-caps text-outline uppercase">
+          Zero-Knowledge &bull; No Plaintext Socket Storage
+        </span>
       </div>
     </div>
   );

@@ -1,21 +1,20 @@
 import React from "react";
 import { BufferAllocation } from "@/components/storage/BufferAllocation";
 import { StorageVolumes } from "@/components/storage/StorageVolumes";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { MetricBox } from "@/components/ui/MetricBox";
 
 export default function StoragePage() {
   return (
-    <div>
-      <SectionHeader
-        title="Buffer & Storage Allocation"
-        tag="DMA MEMORY BUS"
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <MetricBox label="TOTAL HUGEPAGE RAM" value="4.00" unit="GB" delta="2MB Pages" />
-        <MetricBox label="NVME DIRECT WRITE SPEED" value="4.2" unit="GB/s" delta="Zero-Copy Direct I/O" />
-        <MetricBox label="BUFFER CACHE HIT RATIO" value="99.4" unit="%" delta="Optimal cache warmth" />
+    <div className="px-margin py-space-lg flex flex-col gap-space-xl">
+      <div className="bg-surface-container-lowest p-space-xl border border-outline-variant flex flex-col gap-space-xs shadow-xl">
+        <span className="font-label-caps text-label-caps uppercase text-outline tracking-widest">
+          DMA MEMORY // HARDWARE PASSTHROUGH
+        </span>
+        <h1 className="font-display-lg text-display-lg uppercase tracking-tight text-primary font-semibold">
+          BUFFER &amp; STORAGE ALLOCATION
+        </h1>
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+          POSIX shared memory rings, Linux kernel hugepages pools, and direct NVMe partition mounting for zero-copy streaming.
+        </p>
       </div>
 
       <BufferAllocation />

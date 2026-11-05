@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
-import { StatusHUD } from "@/components/layout/StatusHUD";
-import { Footer } from "@/components/layout/Footer";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "PROTO/TCP — Kernel Synchronous Stream Engine",
-  description: "Monochrome high-throughput point-to-point data transport and TCP protocol management console.",
+  title: "PROTO/TCP — Direct TCP Socket Sharing",
+  description: "High-performance zero-relay raw TCP/IP chunk streaming over encrypted TLS 1.3 socket pairs.",
 };
 
 export default function RootLayout({
@@ -16,13 +14,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-surface text-on-surface antialiased flex flex-col min-h-screen">
-        <Navbar />
-        <StatusHUD />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-          {children}
-        </main>
-        <Footer />
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        />
+      </head>
+      <body className="bg-surface text-on-surface antialiased">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -2,9 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { KeyRound, ShieldCheck, ArrowLeft, Radio } from "lucide-react";
 
 export default function VerifyPage() {
   const [touching, setTouching] = useState(false);
@@ -15,53 +12,58 @@ export default function VerifyPage() {
     setTimeout(() => {
       setTouching(false);
       setVerified(true);
-    }, 1500);
+    }, 1400);
   };
 
   return (
-    <div>
-      <div className="mb-4">
-        <Link href="/auth" className="font-mono text-xs text-outline hover:text-primary flex items-center gap-1">
-          <ArrowLeft size={12} /> Back to Node Auth
-        </Link>
-      </div>
-
-      <SectionHeader
-        title="Two-Factor & FIDO2 Key Verification"
-        tag="HARDWARE CTAP2"
-      />
-
-      <div className="max-w-md mx-auto bg-surface-low border border-surface-high p-6 my-8 text-center">
-        <div className="w-12 h-12 mx-auto mb-4 border border-surface-high bg-surface-lowest flex items-center justify-center text-primary">
-          <KeyRound size={20} className={touching ? "animate-bounce" : ""} />
+    <div className="px-margin py-space-lg flex flex-col gap-space-xl">
+      <div className="max-w-md mx-auto w-full bg-surface-container-lowest border border-outline-variant p-space-xl shadow-xl flex flex-col gap-space-md text-center">
+        <div className="w-16 h-16 mx-auto bg-surface-container border border-outline-variant flex items-center justify-center text-primary">
+          <span className={`material-symbols-outlined text-[32px] ${touching ? "animate-pulse" : ""}`}>
+            fingerprint
+          </span>
         </div>
 
-        <h3 className="font-mono text-sm font-semibold text-primary uppercase tracking-wider mb-2">
-          Insert or Touch Security Key
-        </h3>
-        <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
-          PROTO-TCP requires physical user presence verification for elevated socket control and ring buffer reallocation.
-        </p>
+        <div className="flex flex-col gap-space-xs">
+          <span className="font-label-caps text-label-caps uppercase text-outline tracking-widest">
+            FIDO2 // CTAP2 AUTHENTICATOR
+          </span>
+          <h2 className="font-headline-sm text-headline-sm uppercase text-primary tracking-wider font-semibold">
+            TOUCH SECURITY KEY TO PROCEED
+          </h2>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            User presence verification required to bind new socket ratchets to hardware TPM.
+          </p>
+        </div>
 
         {verified ? (
-          <div className="p-3 bg-surface-highest border border-primary text-primary font-mono text-xs flex items-center justify-center gap-2 mb-4">
-            <ShieldCheck size={16} /> CTAP2 Attestation Approved. Redirecting...
+          <div className="p-space-sm bg-surface-container-high border border-primary text-primary font-mono text-xs flex items-center justify-center gap-space-xs">
+            <span className="material-symbols-outlined text-[18px]">verified</span>
+            <span>Hardware Token Approved. Node Session Granted.</span>
           </div>
         ) : (
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full mb-4"
-            disabled={touching}
+          <button
             onClick={handleTouch}
+            disabled={touching}
+            className="w-full py-3 font-headline-sm text-headline-sm uppercase tracking-wider flex items-center justify-center gap-space-xs font-semibold"
+            style={{
+              background: "linear-gradient(135deg, rgb(223, 189, 105) 0%, rgb(197, 160, 89) 100%)",
+              color: "#131313",
+              border: "1px solid rgb(243, 229, 171)",
+            }}
           >
-            <Radio size={14} className={touching ? "animate-pulse" : ""} />
-            {touching ? "Awaiting Hardware Touch..." : "Simulate WebAuthn Touch"}
-          </Button>
+            <span className="material-symbols-outlined text-[18px]">touch_app</span>
+            <span>{touching ? "AWAITING HARDWARE TOUCH..." : "TOUCH PHYSICAL KEY"}</span>
+          </button>
         )}
 
-        <div className="font-mono text-[10px] text-outline">
-          USB-A &bull; USB-C &bull; NFC &bull; FIDO2 L2 Security Standard
+        <div className="pt-space-xs border-t border-outline-variant">
+          <Link
+            href="/auth"
+            className="font-label-caps text-label-caps uppercase text-outline hover:text-primary transition-colors"
+          >
+            &larr; Return to Key Selection
+          </Link>
         </div>
       </div>
     </div>
