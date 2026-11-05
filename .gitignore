@@ -3,6 +3,7 @@ docs/
 /docs/
 
 # Build & compiled outputs
+.next/
 build/
 bin/
 dist/

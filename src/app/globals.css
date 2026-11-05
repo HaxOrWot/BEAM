@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #131313;
+    --foreground: #e5e2e1;
+  }
+
+  html,
+  body {
+    background-color: #131313;
+    color: #e5e2e1;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
+
+  * {
+    border-color: #2a2a2a;
+    box-sizing: border-box;
+  }
+
+  /* Custom subtle technical scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0e0e0e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #444748;
+  }
+}
+
+@layer utilities {
+  .font-mono-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .border-rim {
+    border: 1px solid #2a2a2a;
+  }
+  .border-rim-subtle {
+    border: 1px solid #1c1b1b;
+  }
+}
