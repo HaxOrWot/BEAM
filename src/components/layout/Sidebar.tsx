@@ -9,16 +9,18 @@ export interface SidebarNavProps {
 }
 
 const NAV_ITEMS = [
-  { label: "Transfer Console", href: "/", icon: "sync_alt" },
+  { label: "Transfer Console", href: "/transfers", icon: "sync_alt" },
+  { label: "Protocol Engine", href: "/engine", icon: "terminal" },
   { label: "Peers Topology", href: "/peers", icon: "hub" },
   { label: "Key Ring & E2EE Vault", href: "/vault", icon: "lock" },
   { label: "Incoming Streams", href: "/streams", icon: "download" },
   { label: "Socket Handshakes", href: "/handshakes", icon: "handshake" },
   { label: "Buffer & Storage", href: "/storage", icon: "memory" },
   { label: "Telemetry & Audit", href: "/telemetry", icon: "monitoring" },
-  { label: "Diagnostics & Logs", href: "/diagnostics", icon: "terminal" },
+  { label: "Diagnostics & Logs", href: "/diagnostics", icon: "troubleshoot" },
   { label: "Node Enrollment", href: "/enrollment", icon: "add_circle" },
   { label: "Node Authentication", href: "/auth", icon: "shield" },
+  { label: "Ingress Authorized", href: "/auth/success", icon: "lock_open" },
 ];
 
 export const Sidebar: React.FC<SidebarNavProps> = ({ onCloseMobile }) => {

@@ -1,24 +1,24 @@
 import React from "react";
-import { HandshakeList } from "@/components/handshakes/HandshakeList";
-import { IngressPolicy } from "@/components/handshakes/IngressPolicy";
+import { HandshakeHeader } from "@/components/handshakes/HandshakeHeader";
+import { HandshakeMetrics } from "@/components/handshakes/HandshakeMetrics";
+import { HandshakeQueue } from "@/components/handshakes/HandshakeQueue";
+import { IngressFirewallRules } from "@/components/handshakes/IngressFirewallRules";
+import { SynPacketTrace } from "@/components/handshakes/SynPacketTrace";
 
 export default function HandshakesPage() {
   return (
-    <div className="px-margin py-space-lg flex flex-col gap-space-xl">
-      <div className="bg-surface-container-lowest p-space-xl border border-outline-variant flex flex-col gap-space-xs shadow-xl">
-        <span className="font-label-caps text-label-caps uppercase text-outline tracking-widest">
-          SECURITY INGRESS // eBPF KERNEL GATEWAY
-        </span>
-        <h1 className="font-display-lg text-display-lg uppercase tracking-tight text-primary font-semibold">
-          SOCKET HANDSHAKES &amp; INGRESS AUTHORIZATION
-        </h1>
-        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
-          Real-time packet signature verification and firewall ingress rules governing ephemeral TCP stream allocation.
-        </p>
+    <div className="w-full min-h-screen px-margin py-space-lg flex flex-col gap-space-lg">
+      <HandshakeHeader />
+      <HandshakeMetrics />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+        <div className="lg:col-span-7">
+          <HandshakeQueue />
+        </div>
+        <div className="lg:col-span-5 flex flex-col gap-space-lg">
+          <IngressFirewallRules />
+          <SynPacketTrace />
+        </div>
       </div>
-
-      <HandshakeList />
-      <IngressPolicy />
     </div>
   );
 }

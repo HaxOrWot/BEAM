@@ -15,7 +15,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   if (isLandingPage) {
     return (
-      <div className="bg-surface font-body-lg text-body-lg text-on-surface antialiased min-h-screen flex flex-col justify-between">
+      <div suppressHydrationWarning className="bg-surface font-body-lg text-body-lg text-on-surface antialiased min-h-screen flex flex-col justify-between">
         <LandingHeader />
         <main className="pt-14 w-full flex-1 bg-surface">
           {children}
@@ -25,9 +25,9 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     );
   }
 
-  // Console Mode for /transfers, /peers, /vault, /diagnostics, etc.
+  // Console Mode for /transfers, /peers, /vault, /diagnostics, /streams, etc.
   return (
-    <div className="bg-surface font-body-lg text-body-lg text-on-surface antialiased min-h-screen">
+    <div suppressHydrationWarning className="bg-surface font-body-lg text-body-lg text-on-surface antialiased min-h-screen">
       <Header onToggleMobile={() => setMobileOpen(!mobileOpen)} />
 
       {/* Desktop Fixed Sidebar */}

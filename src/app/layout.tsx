@@ -13,14 +13,37 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (typeof window !== 'undefined') {
+                  const removeBis = (el) => {
+                    if (el && el.hasAttribute && el.hasAttribute('bis_skin_checked')) {
+                      el.removeAttribute('bis_skin_checked');
+                    }
+                    if (el && el.children) {
+                      for (let i = 0; i < el.children.length; i++) removeBis(el.children[i]);
+                    }
+                  };
+                  removeBis(document.documentElement);
+                  const obs = new MutationObserver((mutations) => {
+                    for (const m of mutations) {
+                      if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked' && m.target) {
+                        m.target.removeAttribute('bis_skin_checked');
+                      }
+                    }
+                  });
+                  obs.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['bis_skin_checked'] });
+                }
+              } catch (e) {}
+            `,
+          }}
         />
       </head>
-      <body className="bg-surface text-on-surface antialiased">
+      <body className="bg-surface text-on-surface antialiased" suppressHydrationWarning>
         <AppShell>{children}</AppShell>
       </body>
     </html>
