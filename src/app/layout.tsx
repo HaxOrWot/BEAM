@@ -20,6 +20,26 @@ export default function RootLayout({
             __html: `
               try {
                 if (typeof window !== 'undefined') {
+                  const origError = console.error;
+                  console.error = function(...args) {
+                    const str = args.map(a => typeof a === 'string' ? a : (a && a.message) || '').join(' ');
+                    if (str.includes('bis_skin_checked')) return;
+                    origError.apply(console, args);
+                  };
+
+                  const origWarn = console.warn;
+                  console.warn = function(...args) {
+                    const str = args.map(a => typeof a === 'string' ? a : (a && a.message) || '').join(' ');
+                    if (str.includes('bis_skin_checked')) return;
+                    origWarn.apply(console, args);
+                  };
+
+                  const origSetAttr = Element.prototype.setAttribute;
+                  Element.prototype.setAttribute = function(name, value) {
+                    if (name === 'bis_skin_checked') return;
+                    return origSetAttr.apply(this, arguments);
+                  };
+
                   const removeBis = (el) => {
                     if (el && el.hasAttribute && el.hasAttribute('bis_skin_checked')) {
                       el.removeAttribute('bis_skin_checked');

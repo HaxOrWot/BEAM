@@ -10,6 +10,12 @@ export default function SessionUnlockedPage() {
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
+    if (countdown <= 0) {
+      router.push("/transfers");
+    }
+  }, [countdown, router]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
@@ -24,7 +30,6 @@ export default function SessionUnlockedPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownTimer);
-          router.push("/transfers");
           return 0;
         }
         return prev - 1;
@@ -35,7 +40,7 @@ export default function SessionUnlockedPage() {
       clearInterval(timer);
       clearInterval(countdownTimer);
     };
-  }, [router]);
+  }, []);
 
   return (
     <div className="px-margin py-space-xl flex flex-col gap-space-xl max-w-5xl mx-auto">
