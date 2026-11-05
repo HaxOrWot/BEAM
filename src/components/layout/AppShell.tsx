@@ -1,12 +1,31 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
+import { LandingHeader } from "../landing/LandingHeader";
+import { LandingFooter } from "../landing/LandingFooter";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const isLandingPage = pathname === "/";
+
+  if (isLandingPage) {
+    return (
+      <div className="bg-surface font-body-lg text-body-lg text-on-surface antialiased min-h-screen flex flex-col justify-between">
+        <LandingHeader />
+        <main className="pt-14 w-full flex-1 bg-surface">
+          {children}
+        </main>
+        <LandingFooter />
+      </div>
+    );
+  }
+
+  // Console Mode for /transfers, /peers, /vault, /diagnostics, etc.
   return (
     <div className="bg-surface font-body-lg text-body-lg text-on-surface antialiased min-h-screen">
       <Header onToggleMobile={() => setMobileOpen(!mobileOpen)} />

@@ -1,18 +1,16 @@
 import React from "react";
-import { HeroBanner } from "@/components/transfer-console/HeroBanner";
-import { TargetIngressCard } from "@/components/transfer-console/TargetIngressCard";
-import { DropzoneCard } from "@/components/transfer-console/DropzoneCard";
-import { AggregateSpeedHud } from "@/components/transfer-console/AggregateSpeedHud";
-import { ActiveStreamsCard } from "@/components/transfer-console/ActiveStreamsCard";
+import { LandingHero } from "@/components/landing/LandingHero";
+import { PipelineSpecs } from "@/components/landing/PipelineSpecs";
+import { WirePropagationTest } from "@/components/landing/WirePropagationTest";
+import { TechnicalFeatures } from "@/components/landing/TechnicalFeatures";
 
 export default function HomePage() {
   return (
-    <div className="px-margin py-space-lg flex flex-col gap-space-xl">
-      <HeroBanner />
-      <TargetIngressCard />
-      <DropzoneCard />
-      <AggregateSpeedHud />
-      <ActiveStreamsCard />
+    <div className="w-full flex flex-col">
+      <LandingHero />
+      <PipelineSpecs />
+      <WirePropagationTest />
+      <TechnicalFeatures />
     </div>
   );
 }
