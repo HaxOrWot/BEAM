@@ -1,0 +1,36 @@
+# Build & compiled outputs
+build/
+bin/
+dist/
+target/
+out/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+*.obj
+
+# Editor & IDE configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+
+# Environment & local settings
+.env
+.env*.local
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Language caches
+__pycache__/
+*.py[cod]
+node_modules/
