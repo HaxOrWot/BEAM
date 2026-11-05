@@ -3,10 +3,31 @@
 import React from "react";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { MOCK_KEYS } from "@/lib/mock-data";
-import { Key, Plus, Shield, Copy } from "lucide-react";
+import { useP2P } from "@/context/P2PContext";
+import { Shield, Copy } from "lucide-react";
 
 export const KeyList: React.FC = () => {
+  const { identity } = useP2P();
+
+  const userKeys = [
+    {
+      id: "key-primary",
+      label: `MASTER IDENTITY (${identity.username.toUpperCase()})`,
+      algorithm: "ED25519 / CURVE25519",
+      fingerprint: identity.publicKeyHex,
+      status: "ACTIVE" as const,
+      createdDate: new Date(identity.createdAt).toISOString().split("T")[0],
+    },
+    {
+      id: "key-ephemeral",
+      label: "EPHEMERAL X25519 RATIO SESSION",
+      algorithm: "X25519 ECDH",
+      fingerprint: `0x${identity.callsign}_SESSION_KEY_ACTIVE`,
+      status: "ACTIVE" as const,
+      createdDate: new Date().toISOString().split("T")[0],
+    },
+  ];
+
   return (
     <div className="bg-surface-low border border-surface-high p-4 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-surface-high gap-2 mb-4">
@@ -15,22 +36,13 @@ export const KeyList: React.FC = () => {
             Cryptographic Key Ring
           </h3>
           <p className="text-[11px] text-outline mt-0.5">
-            Public and private key pairs for authenticating TCP ingress handshakes.
+            Hardware-backed and Web Crypto attestation keys for node @{identity.username}.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => alert("Generate key pair modal")}>
-            <Plus size={12} /> Generate Key
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => alert("Import private key")}>
-            <Key size={12} /> Import Secret
-          </Button>
         </div>
       </div>
 
       <div className="space-y-3">
-        {MOCK_KEYS.map((key) => (
+        {userKeys.map((key) => (
           <div
             key={key.id}
             className="p-3 bg-surface-lowest border border-surface-high flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-outline/50 transition-colors"
@@ -48,7 +60,7 @@ export const KeyList: React.FC = () => {
                     {key.status}
                   </Badge>
                 </div>
-                <div className="font-mono text-[11px] text-outline mt-1 font-mono-num">
+                <div className="font-mono text-[11px] text-outline mt-1 font-mono-num break-all">
                   Fingerprint: {key.fingerprint}
                 </div>
                 <div className="font-mono text-[10px] text-on-surface-variant mt-0.5">
@@ -67,13 +79,6 @@ export const KeyList: React.FC = () => {
                 }}
               >
                 <Copy size={11} /> Copy
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => alert(`Revoke ${key.id}`)}
-              >
-                Revoke
               </Button>
             </div>
           </div>

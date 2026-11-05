@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useP2P } from "@/context/P2PContext";
 
 export const SignInForm: React.FC = () => {
   const router = useRouter();
+  const { loginWithSocial, updateUsername } = useP2P();
   const [activeTab, setActiveTab] = useState<"ed25519" | "tpm" | "passkey">("ed25519");
   const [operatorId, setOperatorId] = useState("sec-lead@nexus.internal");
   const [keyInput, setKeyInput] = useState("ed25519_sk_8f7b2c90a1e34589d89ffac0132");
@@ -13,14 +15,92 @@ export const SignInForm: React.FC = () => {
   const [requireZkp, setRequireZkp] = useState(true);
   const [strictPfs, setStrictPfs] = useState(true);
   const [tpmAttested, setTpmAttested] = useState(true);
+  const [modalProvider, setModalProvider] = useState<"google" | "github" | null>(null);
+  const [socialEmail, setSocialEmail] = useState("");
+  const [socialName, setSocialName] = useState("");
+
+  const handleSocialClick = (provider: "google" | "github") => {
+    setModalProvider(provider);
+    setSocialEmail(provider === "google" ? "operator@gmail.com" : "developer@github.com");
+    setSocialName(provider === "google" ? "Google Operator" : "GitHub Developer");
+  };
+
+  const handleConfirmSocial = () => {
+    if (!modalProvider) return;
+    loginWithSocial(modalProvider, socialEmail, socialName);
+    router.push("/auth/success");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (operatorId) {
+      updateUsername(operatorId);
+    }
     router.push("/auth/verify");
   };
 
   return (
-    <div className="flex flex-col bg-surface-container-low border border-outline-variant">
+    <div className="flex flex-col bg-surface-container-low border border-outline-variant relative">
+      {/* Social Provider Modal */}
+      {modalProvider && (
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md p-space-lg flex flex-col justify-center items-center">
+          <div className="bg-surface-container-lowest max-w-md w-full p-space-lg border border-primary flex flex-col gap-space-md shadow-2xl">
+            <div className="flex items-center justify-between border-b border-outline-variant pb-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">
+                  {modalProvider === "google" ? "account_circle" : "hub"}
+                </span>
+                <span className="font-headline-sm text-headline-sm text-primary uppercase font-semibold">
+                  AUTHENTICATE VIA {modalProvider}
+                </span>
+              </div>
+              <button onClick={() => setModalProvider(null)} className="text-outline hover:text-primary">
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3 font-mono text-xs">
+              <label className="flex flex-col gap-1">
+                <span className="text-outline uppercase">ACCOUNT EMAIL / ID:</span>
+                <input
+                  type="email"
+                  value={socialEmail}
+                  onChange={(e) => setSocialEmail(e.target.value)}
+                  className="bg-surface-container-low border border-outline-variant p-2 text-primary focus:outline-none focus:border-primary"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-outline uppercase">DISPLAY NAME / CALLSIGN:</span>
+                <input
+                  type="text"
+                  value={socialName}
+                  onChange={(e) => setSocialName(e.target.value)}
+                  className="bg-surface-container-low border border-outline-variant p-2 text-primary focus:outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmSocial}
+                className="flex-1 py-2.5 bg-primary text-on-primary font-label-caps text-xs uppercase font-bold hover:bg-gold-warm transition-all cursor-pointer"
+              >
+                CONFIRM &amp; AUTHORIZE NODE
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalProvider(null)}
+                className="px-4 py-2.5 bg-surface-container border border-outline-variant text-outline hover:text-primary font-mono text-xs uppercase cursor-pointer"
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enterprise SSO */}
       <div className="p-space-md md:p-space-lg border-b border-outline-variant flex flex-col gap-space-md">
         <div className="flex items-center justify-between">
@@ -36,16 +116,18 @@ export const SignInForm: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
           <button
             type="button"
-            onClick={() => router.push("/auth/verify")}
-            className="flex items-center justify-center gap-space-sm px-space-md py-3 bg-surface-container border border-outline-variant hover:border-primary text-on-surface hover:text-primary transition-all active:scale-[0.99]"
+            onClick={() => handleSocialClick("google")}
+            className="flex items-center justify-center gap-space-sm px-space-md py-3 bg-surface-container border border-outline-variant hover:border-primary text-on-surface hover:text-primary transition-all active:scale-[0.99] cursor-pointer"
           >
+            <span className="material-symbols-outlined text-[18px] text-primary">account_circle</span>
             <span className="font-headline-sm text-headline-sm">Continue with Google</span>
           </button>
           <button
             type="button"
-            onClick={() => router.push("/auth/verify")}
-            className="flex items-center justify-center gap-space-sm px-space-md py-3 bg-surface-container border border-outline-variant hover:border-primary text-on-surface hover:text-primary transition-all active:scale-[0.99]"
+            onClick={() => handleSocialClick("github")}
+            className="flex items-center justify-center gap-space-sm px-space-md py-3 bg-surface-container border border-outline-variant hover:border-primary text-on-surface hover:text-primary transition-all active:scale-[0.99] cursor-pointer"
           >
+            <span className="material-symbols-outlined text-[18px] text-primary">hub</span>
             <span className="font-headline-sm text-headline-sm">Continue with GitHub</span>
           </button>
         </div>
@@ -218,7 +300,7 @@ export const SignInForm: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-xs">
           <button
             type="submit"
-            className="w-full sm:w-auto px-space-xl py-3 bg-primary text-on-primary font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-gold-warm transition-all flex items-center justify-center gap-space-xs shadow-[0_0_12px_rgba(212,175,55,0.2)] active:scale-[0.99]"
+            className="w-full sm:w-auto px-space-xl py-3 bg-primary text-on-primary font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-gold-warm transition-all flex items-center justify-center gap-space-xs shadow-[0_0_12px_rgba(212,175,55,0.2)] active:scale-[0.99] cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">login</span>
             <span>SIGN IN TO PROTO/TCP</span>

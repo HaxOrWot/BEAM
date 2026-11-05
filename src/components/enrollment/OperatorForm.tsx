@@ -1,12 +1,29 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useP2P } from "@/context/P2PContext";
 
 export const OperatorForm: React.FC = () => {
+  const router = useRouter();
+  const { loginWithSocial, updateUsername } = useP2P();
   const [email, setEmail] = useState("sec-lead@nexus.internal");
   const [passphrase, setPassphrase] = useState("Enclave-Master-99x2!");
   const [confirmPass, setConfirmPass] = useState("Enclave-Master-99x2!");
   const [hardwareBind, setHardwareBind] = useState(true);
+
+  const handleSocialConnect = (provider: "google" | "github") => {
+    loginWithSocial(provider, `${provider}-operator@mesh.proto`, `${provider.toUpperCase()} Operator`);
+    router.push("/auth/success");
+  };
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      updateUsername(email.split("@")[0]);
+      router.push("/auth/success");
+    }
+  };
 
   return (
     <div className="flex flex-col gap-space-lg">
@@ -20,23 +37,24 @@ export const OperatorForm: React.FC = () => {
             </h2>
           </div>
           <span className="font-telemetry-sm text-telemetry-sm text-outline">
-            OAUTH2 + WEBAUTHN
+            GOOGLE &amp; GITHUB OAUTH2
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
           <button
             type="button"
-            className="p-space-md bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-between border border-outline-variant"
+            onClick={() => handleSocialConnect("google")}
+            className="p-space-md bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-between border border-outline-variant cursor-pointer text-left"
           >
             <div className="flex items-center gap-space-sm">
-              <span className="material-symbols-outlined text-primary text-[20px]">fingerprint</span>
+              <span className="material-symbols-outlined text-primary text-[20px]">account_circle</span>
               <div className="flex flex-col text-left">
                 <span className="font-label-caps text-label-caps uppercase text-on-surface font-semibold">
-                  WebAuthn Passkey
+                  Google Workspace
                 </span>
                 <span className="font-telemetry-sm text-telemetry-sm text-outline">
-                  FIDO2 / YubiKey Hardware
+                  One-Click Cloud Ingress
                 </span>
               </div>
             </div>
@@ -45,7 +63,8 @@ export const OperatorForm: React.FC = () => {
 
           <button
             type="button"
-            className="p-space-md bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-between border border-outline-variant"
+            onClick={() => handleSocialConnect("github")}
+            className="p-space-md bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-between border border-outline-variant cursor-pointer text-left"
           >
             <div className="flex items-center gap-space-sm">
               <span className="material-symbols-outlined text-primary text-[20px]">hub</span>

@@ -1,13 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useP2P } from "@/context/P2PContext";
 
-export default function SessionUnlockedPage() {
+function SessionContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { identity, loginWithSocial } = useP2P();
   const [progress, setProgress] = useState(75);
   const [countdown, setCountdown] = useState(3);
+
+  // Sync OAuth params if present
+  useEffect(() => {
+    const provider = searchParams.get("provider") as "google" | "github" | null;
+    const email = searchParams.get("email");
+    const name = searchParams.get("name") || email?.split("@")[0] || "User";
+    const avatar = searchParams.get("avatar") || undefined;
+
+    if (provider && email) {
+      loginWithSocial(provider, email, name, avatar);
+    }
+  }, [searchParams, loginWithSocial]);
 
   useEffect(() => {
     if (countdown <= 0) {
@@ -71,14 +86,14 @@ export default function SessionUnlockedPage() {
                 className="font-label-caps text-label-caps uppercase tracking-widest font-semibold"
                 style={{ color: "#DFBD69" }}
               >
-                INGRESS AUTHORIZED // ATTESTATION_0x99F1
+                INGRESS AUTHORIZED // @{identity.username} [{identity.callsign}]
               </span>
             </div>
             <h1 className="font-display-lg text-headline-lg md:text-display-lg uppercase tracking-tight text-primary font-semibold">
               SESSION UNLOCKED &amp; INGRESS GRANTED
             </h1>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Cryptographic handshake approved. Direct point-to-point DMA streaming channel active.
+              Authenticated via <span className="text-primary font-medium uppercase">{identity.authProvider}</span> ({identity.email}). Direct point-to-point DMA streaming channel active.
             </p>
           </div>
         </div>
@@ -102,7 +117,7 @@ export default function SessionUnlockedPage() {
         </div>
       </div>
 
-      {/* 3 Assurance Cards from Stitch */}
+      {/* 3 Assurance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
         {/* Card 1 */}
         <div className="bg-surface-container-low border border-outline-variant p-space-lg flex flex-col justify-between gap-space-md">
@@ -167,17 +182,17 @@ export default function SessionUnlockedPage() {
               Cluster Peer Discovery
             </h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-              8 verified cryptographic peers located via mutual broadcast. Ready for immediate zero-knowledge stream peering.
+              Node registered in presence hub under callsign <code className="font-mono text-primary">@{identity.username}</code>. Ready for immediate zero-knowledge stream peering.
             </p>
           </div>
           <div className="pt-space-xs border-t border-outline-variant flex flex-col gap-1 font-telemetry-sm text-telemetry-sm text-outline">
             <div className="flex justify-between">
-              <span>Discovery Beacon</span>
-              <span className="text-on-surface">mDNS // Local Segment</span>
+              <span>Active Node</span>
+              <span className="text-on-surface">{identity.callsign}</span>
             </div>
             <div className="flex justify-between">
               <span>Mutual Peering</span>
-              <span style={{ color: "#DFBD69" }}>8/8 Nodes Ready</span>
+              <span style={{ color: "#DFBD69" }}>WebRTC Pipe Online</span>
             </div>
           </div>
         </div>
@@ -187,10 +202,20 @@ export default function SessionUnlockedPage() {
       <div className="bg-surface-container-lowest p-space-sm border border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-space-xs font-telemetry-sm text-telemetry-sm text-outline">
         <div className="flex items-center gap-space-xs">
           <span className="w-1.5 h-1.5 bg-primary" />
-          <span className="font-mono">ATTESTATION_FINGERPRINT: SHA256:7B89E819B2650AC865FA36EB3A335FCF72C5770C</span>
+          <span className="font-mono truncate max-w-xl">
+            PUBLIC KEY: {identity.publicKeyHex}
+          </span>
         </div>
         <span className="text-primary font-mono uppercase">SECURITY LEVEL: MAXIMUM</span>
       </div>
     </div>
+  );
+}
+
+export default function SessionUnlockedPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-primary font-mono">LOADING SESSION...</div>}>
+      <SessionContent />
+    </Suspense>
   );
 }

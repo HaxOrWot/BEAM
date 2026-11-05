@@ -3,15 +3,15 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useP2P } from "@/context/P2PContext";
 
 export const IdentityArtifactCard: React.FC = () => {
   const router = useRouter();
+  const { identity } = useP2P();
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [pubKey, setPubKey] = useState(
-    "proto_pk_live_8F14E3bA61D328C2aE9B075908C361D4C82bEbE94576C7Da882D3960EFb24D0A"
-  );
+  const pubKey = identity.publicKeyHex;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(pubKey);
