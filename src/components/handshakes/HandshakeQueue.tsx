@@ -123,7 +123,7 @@ export const HandshakeQueue: React.FC = () => {
                   </button>
                   <button
                     onClick={() => handleApprove(r.id)}
-                    className="px-space-md py-1 bg-primary text-black hover:bg-neutral-200 font-label-caps text-label-caps uppercase font-semibold transition-colors"
+                    className="px-space-md py-1 bg-primary text-on-primary hover:bg-gold-warm font-label-caps text-label-caps uppercase font-semibold transition-all shadow-[0_0_8px_rgba(212,175,55,0.25)]"
                   >
                     Approve Ingress
                   </button>

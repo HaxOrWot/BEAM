@@ -100,7 +100,7 @@ export default function NotFound() {
         <div className="flex flex-col sm:flex-row items-center gap-space-sm w-full justify-center mb-space-xl">
           <Link
             href="/peers"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-space-xs px-space-lg py-3 bg-primary text-black font-headline-sm text-headline-sm tracking-wide font-semibold hover:bg-neutral-200 active:scale-[0.99] transition-all"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-space-xs px-space-lg py-3 bg-primary text-on-primary font-headline-sm text-headline-sm tracking-wide font-semibold hover:bg-gold-warm active:scale-[0.99] transition-all shadow-[0_0_12px_rgba(212,175,55,0.25)]"
           >
             <span className="material-symbols-outlined text-[18px]">hub</span>
             <span>RETURN TO ACTIVE PEERS</span>

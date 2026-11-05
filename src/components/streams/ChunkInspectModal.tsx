@@ -39,7 +39,7 @@ export const ChunkInspectModal: React.FC<ChunkInspectModalProps> = ({ streamName
                 key={i}
                 className={`p-1.5 text-center transition-colors ${
                   isDone
-                    ? "bg-primary text-black font-semibold"
+                    ? "bg-primary text-on-primary font-semibold"
                     : isCurrent
                     ? "bg-primary/40 text-primary animate-pulse"
                     : "bg-surface-container text-outline"

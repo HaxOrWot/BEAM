@@ -107,7 +107,7 @@ export const IdentityArtifactCard: React.FC = () => {
           <button
             type="submit"
             disabled={submitting || !confirmed}
-            className="w-full py-space-md bg-primary text-black font-headline-sm text-headline-sm uppercase tracking-wider font-semibold hover:bg-neutral-200 transition-colors shadow-md flex items-center justify-center gap-space-xs disabled:opacity-50"
+            className="w-full py-space-md bg-primary text-on-primary font-headline-sm text-headline-sm uppercase tracking-wider font-semibold hover:bg-gold-warm transition-all shadow-[0_0_12px_rgba(212,175,55,0.25)] flex items-center justify-center gap-space-xs disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">verified_user</span>
             <span>{submitting ? "INITIALIZING ENCLAVE..." : "GENERATE KEYPAIR & COMPLETE NODE ENROLLMENT"}</span>

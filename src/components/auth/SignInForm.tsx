@@ -218,7 +218,7 @@ export const SignInForm: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-xs">
           <button
             type="submit"
-            className="w-full sm:w-auto px-space-xl py-3 bg-primary text-black font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-all flex items-center justify-center gap-space-xs shadow-md"
+            className="w-full sm:w-auto px-space-xl py-3 bg-primary text-on-primary font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-gold-warm transition-all flex items-center justify-center gap-space-xs shadow-[0_0_12px_rgba(212,175,55,0.2)] active:scale-[0.99]"
           >
             <span className="material-symbols-outlined text-[18px]">login</span>
             <span>SIGN IN TO PROTO/TCP</span>

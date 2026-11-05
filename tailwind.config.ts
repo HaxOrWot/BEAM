@@ -10,6 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Deep obsidian Swiss surfaces
         surface: "#131313",
         "surface-dim": "#131313",
         "surface-bright": "#3a3939",
@@ -20,48 +21,68 @@ const config: Config = {
         "surface-container-highest": "#353534",
         "surface-variant": "#353534",
         "surface-tint": "#c6c6c7",
+        "surface-jet": "#111111",
+        "surface-elevated": "#161616",
+
+        // Typography & Content
         "on-surface": "#e5e2e1",
         "on-surface-variant": "#c4c7c8",
         "inverse-surface": "#e5e2e1",
         "inverse-on-surface": "#313030",
+        "text-muted": "#8E8E93",
+
+        // Outlines & Borders
         outline: "#8e9192",
         "outline-variant": "#444748",
-        primary: "#ffffff",
-        "on-primary": "#2f3131",
-        "primary-container": "#e2e2e2",
-        "on-primary-container": "#636565",
-        "primary-fixed": "#e2e2e2",
-        "primary-fixed-dim": "#c6c6c7",
-        "on-primary-fixed": "#1a1c1c",
-        "on-primary-fixed-variant": "#454747",
+        "border-dark": "#222222",
+        "border-gold": "#3A3220",
+        "border-gold-accent": "#DFBD69",
+        "border-gold-light": "rgba(223, 189, 105, 0.4)",
+
+        // Stitch Signature Gold System
+        primary: "#DFBD69",
+        "on-primary": "#131313",
+        "primary-container": "#d4af37",
+        "on-primary-container": "#554300",
+        "primary-fixed": "#ffe088",
+        "primary-fixed-dim": "#e9c349",
+        "on-primary-fixed": "#241a00",
+        "on-primary-fixed-variant": "#574500",
+
+        gold: {
+          DEFAULT: "#DFBD69",
+          warm: "#DFBD69",
+          light: "#F3E5AB",
+          muted: "#C5A059",
+          dark: "#C5A059",
+          primary: "#DFBD69",
+          accent: "#DFBD69",
+        },
+        "gold-warm": "#DFBD69",
+        "gold-light": "#F3E5AB",
+        "gold-muted": "#C5A059",
+        "gold-primary": "#DFBD69",
+
+        // Secondary & Tertiary
         secondary: "#c6c6cf",
         "on-secondary": "#2f3037",
         "secondary-container": "#45464e",
         "on-secondary-container": "#b4b4bd",
         "secondary-fixed": "#e2e1eb",
         "secondary-fixed-dim": "#c6c6cf",
-        "on-secondary-fixed": "#1a1b22",
-        "on-secondary-fixed-variant": "#45464e",
-        tertiary: "#ffffff",
-        "on-tertiary": "#303030",
-        "tertiary-container": "#e4e2e1",
-        "on-tertiary-container": "#656464",
-        "tertiary-fixed": "#e4e2e1",
-        "tertiary-fixed-dim": "#c8c6c5",
-        "on-tertiary-fixed": "#1b1c1c",
-        "on-tertiary-fixed-variant": "#474746",
+
+        tertiary: "#efcb60",
+        "on-tertiary": "#3d2f00",
+        "tertiary-container": "#d2af48",
+        "on-tertiary-container": "#554300",
+
         background: "#131313",
         "on-background": "#e5e2e1",
+
         error: "#ffb4ab",
         "on-error": "#690005",
         "error-container": "#93000a",
         "on-error-container": "#ffdad6",
-        // Gold accents from Stitch design
-        gold: {
-          DEFAULT: "#DFBD69",
-          dark: "#C5A059",
-          light: "#F3E5AB",
-        },
       },
       spacing: {
         "space-xs": "0.25rem",

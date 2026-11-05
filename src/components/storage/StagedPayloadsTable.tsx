@@ -50,7 +50,7 @@ export const StagedPayloadsTable: React.FC = () => {
                 <span className="text-outline">{p.size}</span>
                 <span className={`px-space-xs py-0.5 text-[10px] uppercase font-semibold ${
                   p.status === "COMPLETED"
-                    ? "bg-primary text-black"
+                    ? "bg-primary text-on-primary"
                     : p.status === "WRITING"
                     ? "border border-primary text-primary"
                     : "bg-surface-container text-outline"

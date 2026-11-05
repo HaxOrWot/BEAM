@@ -6,7 +6,7 @@ export const StepPipeline: React.FC = () => {
       {/* Step 1 */}
       <div className="p-space-md bg-surface-container-lowest flex items-center justify-between border-b md:border-b-0 md:border-r border-outline-variant">
         <div className="flex items-center gap-space-sm">
-          <div className="w-6 h-6 bg-primary flex items-center justify-center font-label-caps text-label-caps text-black font-bold">
+          <div className="w-6 h-6 bg-primary flex items-center justify-center font-label-caps text-label-caps text-on-primary font-bold">
             01
           </div>
           <div className="flex flex-col">

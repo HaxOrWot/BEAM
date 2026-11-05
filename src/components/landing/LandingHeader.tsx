@@ -54,7 +54,12 @@ export const LandingHeader: React.FC = () => {
         <div className="flex items-center gap-space-sm">
           <Link
             href="/transfers"
-            className="px-space-md py-1.5 bg-primary text-on-primary font-label-caps text-label-caps uppercase tracking-wider font-semibold hover:bg-neutral-200 transition-colors flex items-center gap-space-xs"
+            className="px-space-md py-1.5 font-label-caps text-label-caps uppercase tracking-wider font-semibold transition-colors flex items-center gap-space-xs"
+            style={{
+              backgroundColor: "rgb(223, 189, 105)",
+              color: "rgb(19, 19, 19)",
+              boxShadow: "rgba(223, 189, 105, 0.3) 0px 0px 12px",
+            }}
           >
             <span className="material-symbols-outlined text-[15px]">terminal</span>
             <span>ENTER CONSOLE</span>

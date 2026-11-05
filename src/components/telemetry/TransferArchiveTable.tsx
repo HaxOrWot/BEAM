@@ -83,7 +83,7 @@ export const TransferArchiveTable: React.FC = () => {
                   <span
                     className={`px-1.5 py-0.5 text-[10px] font-semibold ${
                       r.status === "STREAMING"
-                        ? "bg-primary text-black"
+                        ? "bg-primary text-on-primary font-semibold"
                         : "border border-outline-variant text-outline"
                     }`}
                   >

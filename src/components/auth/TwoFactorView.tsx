@@ -166,7 +166,7 @@ export const TwoFactorView: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleTouchKey}
-                    className="w-full py-3 bg-primary text-black font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-colors flex items-center justify-center gap-space-xs"
+                    className="w-full py-3 bg-primary text-on-primary font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-gold-warm transition-all flex items-center justify-center gap-space-xs shadow-[0_0_12px_rgba(212,175,55,0.25)]"
                   >
                     <span className="material-symbols-outlined text-[18px]">touch_app</span>
                     <span>{touching ? "VERIFYING ASSERTION..." : handshakeSuccess ? "HANDSHAKE APPROVED &rarr;" : "SIMULATE HARDWARE TOUCH"}</span>
@@ -195,7 +195,7 @@ export const TwoFactorView: React.FC = () => {
               />
               <button
                 type="submit"
-                className="py-3 bg-primary text-black font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-colors"
+                className="py-3 bg-primary text-on-primary font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-gold-warm transition-all shadow-[0_0_12px_rgba(212,175,55,0.25)]"
               >
                 CONFIRM 2FA CODE &amp; ENTER
               </button>
@@ -219,7 +219,7 @@ export const TwoFactorView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => router.push("/auth/success")}
-                className="py-3 bg-primary text-black font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-colors"
+                className="py-3 bg-primary text-on-primary font-label-caps text-label-caps font-semibold uppercase tracking-wider hover:bg-gold-warm transition-all shadow-[0_0_12px_rgba(212,175,55,0.25)]"
               >
                 PROCEED TO VAULT SESSION
               </button>

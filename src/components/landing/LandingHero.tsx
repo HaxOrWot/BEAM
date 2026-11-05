@@ -37,7 +37,7 @@ export const LandingHero: React.FC = () => {
           </div>
 
           {/* Headline */}
-          <h1 className="font-display-lg text-display-lg text-primary tracking-tight font-semibold max-w-2xl uppercase">
+          <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight font-semibold max-w-2xl uppercase">
             Zero-Relay TCP/IP File Transfers.
           </h1>
 
@@ -227,10 +227,16 @@ export const LandingHero: React.FC = () => {
             {/* Connect Submit Button */}
             <button
               type="submit"
-              className="w-full py-space-sm bg-primary text-on-primary font-headline-sm text-headline-sm uppercase tracking-wider font-semibold hover:bg-surface-tint transition-colors shadow-sm flex items-center justify-center gap-space-xs"
+              className="w-full py-space-md text-on-primary font-label-caps text-label-caps uppercase font-bold tracking-wider hover:opacity-90 transition-all flex items-center justify-center gap-space-xs shadow-md active:scale-[0.99]"
+              style={{
+                background: "linear-gradient(135deg, rgb(243, 229, 171) 0%, rgb(223, 189, 105) 50%, rgb(197, 160, 89) 100%)",
+                color: "rgb(19, 19, 19)",
+                boxShadow: "rgba(212, 175, 55, 0.25) 0px 0px 20px",
+                border: "1px solid rgb(223, 189, 105)",
+              }}
             >
-              <span className="material-symbols-outlined text-[18px]">lock_open</span>
-              <span>Enter Streaming Node Session</span>
+              <span>ESTABLISH SOCKET &amp; SIGN IN</span>
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
           </form>
 

@@ -39,7 +39,7 @@ export const StorageHeader: React.FC = () => {
 
         <button
           onClick={() => alert("Kernel ring buffer snapshot exported to dump.bin")}
-          className="px-space-md py-1.5 bg-primary text-black hover:bg-neutral-200 transition-colors font-label-caps text-label-caps uppercase font-semibold tracking-wider text-[10px] flex items-center gap-space-xs"
+          className="px-space-md py-1.5 bg-primary text-on-primary hover:bg-gold-warm transition-all font-label-caps text-label-caps uppercase font-semibold tracking-wider text-[10px] flex items-center gap-space-xs shadow-[0_0_12px_rgba(212,175,55,0.25)]"
         >
           <span className="material-symbols-outlined text-[13px]">terminal</span>
           <span>Export Dump</span>

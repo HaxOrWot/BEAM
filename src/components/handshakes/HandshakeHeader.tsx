@@ -33,7 +33,7 @@ export const HandshakeHeader: React.FC = () => {
         </button>
         <button
           onClick={() => alert("Ingress locked down. Only pre-authorized keys accepted.")}
-          className="px-space-md py-1.5 bg-primary text-black hover:bg-neutral-200 font-label-caps text-label-caps uppercase font-semibold transition-colors flex items-center gap-space-xs tracking-wider"
+          className="px-space-md py-1.5 bg-primary text-on-primary hover:bg-gold-warm font-label-caps text-label-caps uppercase font-semibold transition-all flex items-center gap-space-xs tracking-wider shadow-[0_0_12px_rgba(212,175,55,0.25)]"
         >
           <span className="material-symbols-outlined text-[14px]">shield</span>
           <span>LOCKDOWN INGRESS</span>

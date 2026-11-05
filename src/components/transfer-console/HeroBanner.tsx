@@ -30,7 +30,7 @@ export const HeroBanner: React.FC = () => {
           </span>
         </div>
 
-        <h1 className="font-display-lg text-display-lg uppercase tracking-tight text-primary font-semibold">
+        <h1 className="font-display-lg text-display-lg uppercase tracking-tight text-on-surface font-semibold">
           DIRECT TCP SOCKET SHARING
         </h1>
 
