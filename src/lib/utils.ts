@@ -14,16 +14,36 @@ export function formatBytes(bytes: number, decimals: number = 1): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
-export async function computeSHA256(file: File): Promise<string> {
+export async function computeSHA256(file: File | Blob): Promise<string> {
   try {
-    const buffer = await file.slice(0, 1024 * 1024).arrayBuffer(); // first 1MB for fast real hash
+    const buffer = await file.arrayBuffer();
     const digest = await crypto.subtle.digest("SHA-256", buffer);
     const hashArray = Array.from(new Uint8Array(digest));
-    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    return `sha256-${hashHex.slice(0, 12)}...${hashHex.slice(-8)}`;
-  } catch {
-    return `sha256-${Math.random().toString(16).substring(2, 10)}...`;
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch (err) {
+    console.error("SHA-256 calculation failed:", err);
+    return "";
   }
+}
+
+export function formatShortHash(hash: string): string {
+  if (!hash) return "sha256:pending";
+  if (hash.startsWith("sha256-")) return hash; // backwards compatibility
+  const clean = hash.replace(/^sha256:/, "");
+  if (clean.length < 16) return `sha256:${clean}`;
+  return `sha256:${clean.slice(0, 8)}...${clean.slice(-6)}`;
+}
+
+export async function verifyFileIntegrity(blob: Blob, expectedHash: string): Promise<boolean> {
+  if (!expectedHash) return true;
+  const computed = await computeSHA256(blob);
+  const cleanExpected = expectedHash.replace(/^sha256:/, "");
+  // If legacy shortened hash, check prefix/suffix
+  if (cleanExpected.includes("...")) {
+    const parts = cleanExpected.replace(/^sha256-/, "").split("...");
+    return computed.startsWith(parts[0]) && computed.endsWith(parts[1]);
+  }
+  return computed.toLowerCase() === cleanExpected.toLowerCase();
 }
 
 export function formatTimeAgo(timestamp: number): string {

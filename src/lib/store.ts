@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore, useEffect, useCallback } from "react";
 import { StagedFile, TransferRecord, UserAccount } from "./types";
-import { computeSHA256 } from "./utils";
+import { computeSHA256, verifyFileIntegrity } from "./utils";
 import {
   isHandleAvailableInDb,
   createProfileInDb,
@@ -10,6 +10,9 @@ import {
   saveTransferToDb,
   fetchTransfersFromDb,
   updatePresenceInDb,
+  uploadPayloadFile,
+  downloadPayloadFile,
+  incrementTransferDownloadCount,
   supabase,
 } from "./supabase";
 
@@ -326,13 +329,13 @@ export function useBeamStore() {
   };
 
   // Sign in with handle or email via Supabase
-  const loginWithCredentials = async (handleOrEmail: string, _passphrase?: string) => {
+  const loginWithCredentials = async (handleOrEmail: string, passphrase?: string) => {
     const query = handleOrEmail.trim().toLowerCase().replace(/^@/, "");
     if (!query) {
       return { success: false, error: "Please enter your handle or email." };
     }
 
-    const remoteResult = await authenticateProfileInDb(query);
+    const remoteResult = await authenticateProfileInDb(query, passphrase);
     if (remoteResult.success && remoteResult.user) {
       const loggedInUser = remoteResult.user;
 
@@ -475,6 +478,14 @@ export function useBeamStore() {
       expiresAt: Date.now() + ttlHours * 3600 * 1000,
     };
 
+    // 1. Upload actual binary payloads to Supabase Storage
+    for (const staged of state.stagedFiles) {
+      if (staged.file) {
+        await uploadPayloadFile(record.id, staged.file);
+      }
+    }
+
+    // 2. Persist record and update vault quota in Supabase
     await saveTransferToDb(record);
 
     setStoreState((prev) => ({
@@ -489,7 +500,71 @@ export function useBeamStore() {
     return record;
   };
 
-  // Real file download trigger
+  // Genuine file download with SHA-256 integrity verification and burn enforcement
+  const downloadTransferFile = async ({
+    transferId,
+    fileName,
+    expectedHash,
+    cachedBlob,
+  }: {
+    transferId: string;
+    fileName: string;
+    expectedHash?: string;
+    cachedBlob?: Blob;
+  }): Promise<{ success: boolean; verified: boolean; error?: string }> => {
+    let blobToDownload: Blob | undefined = cachedBlob;
+
+    if (!blobToDownload) {
+      // Download real payload from Supabase Storage
+      const res = await downloadPayloadFile(transferId, fileName);
+      if (!res.success || !res.blob) {
+        return { success: false, verified: false, error: res.error || "File payload unavailable in vault." };
+      }
+      blobToDownload = res.blob;
+    }
+
+    // Cryptographic SHA-256 integrity check
+    let verified = false;
+    if (expectedHash) {
+      verified = await verifyFileIntegrity(blobToDownload, expectedHash);
+    } else {
+      verified = true;
+    }
+
+    // Trigger browser file download with genuine file bytes
+    const url = URL.createObjectURL(blobToDownload);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Enforce download limits & burn on download in Supabase
+    const updateRes = await incrementTransferDownloadCount(transferId);
+    if (updateRes.isBurned) {
+      setStoreState((prev) => ({
+        transfers: prev.transfers.map((t) =>
+          t.id === transferId
+            ? { ...t, status: "expired" as const, downloadCount: updateRes.newCount }
+            : t
+        ),
+      }));
+    } else {
+      setStoreState((prev) => ({
+        transfers: prev.transfers.map((t) =>
+          t.id === transferId
+            ? { ...t, downloadCount: updateRes.newCount }
+            : t
+        ),
+      }));
+    }
+
+    return { success: true, verified };
+  };
+
+  // Legacy file download fallback
   const triggerFileDownload = (fileName: string, blob?: Blob) => {
     const targetBlob =
       blob ||
@@ -522,6 +597,7 @@ export function useBeamStore() {
     removeStagedFile,
     clearStagedFiles,
     dispatchBeam,
+    downloadTransferFile,
     triggerFileDownload,
   };
 }

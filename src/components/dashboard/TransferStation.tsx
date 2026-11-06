@@ -19,7 +19,7 @@ import {
 import { useBeamStore } from "@/lib/store";
 import { useBeamP2P } from "@/lib/p2p/P2PProvider";
 import { fetchActivePeers } from "@/lib/supabase";
-import { formatBytes } from "@/lib/utils";
+import { formatBytes, formatShortHash } from "@/lib/utils";
 
 interface TransferStationProps {
   initialRecipient?: string;
@@ -259,7 +259,7 @@ export const TransferStation: React.FC<TransferStationProps> = ({
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs text-on-surface font-medium truncate">{file.name}</span>
                     <span className="font-mono text-[10px] text-outline">
-                      {formatBytes(file.size)} • {file.hash}
+                      {formatBytes(file.size)} • {formatShortHash(file.hash)}
                     </span>
                   </div>
                 </div>

@@ -39,3 +39,4 @@ $RECYCLE.BIN/
 __pycache__/
 *.py[cod]
 node_modules/
+supabase/.temp/
