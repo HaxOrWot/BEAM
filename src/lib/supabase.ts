@@ -161,6 +161,18 @@ export async function authenticateProfileInDb(
           error: "Invalid passphrase. Authentication failed.",
         };
       }
+    } else if (passphrase) {
+      // Bind passphrase for legacy account
+      const computedHash = await hashPassphrase(passphrase, data.handle.toLowerCase());
+      await supabase
+        .from("profiles")
+        .update({ passphrase_hash: computedHash })
+        .eq("id", data.id);
+    } else {
+      return {
+        success: false,
+        error: "Passphrase required to secure and unlock this identity.",
+      };
     }
 
     const user: UserAccount = {

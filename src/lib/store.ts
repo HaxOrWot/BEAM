@@ -7,6 +7,7 @@ import {
   isHandleAvailableInDb,
   createProfileInDb,
   authenticateProfileInDb,
+  hashPassphrase,
   saveTransferToDb,
   fetchTransfersFromDb,
   updatePresenceInDb,
@@ -318,8 +319,12 @@ export function useBeamStore() {
     try {
       const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
       const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
-      accounts[cleanHandle] = newAccount;
-      if (newAccount.email) accounts[newAccount.email.toLowerCase()] = newAccount;
+      const passwordHash = params.passphrase
+        ? await hashPassphrase(params.passphrase, newAccount.handle.toLowerCase())
+        : undefined;
+      const accountToStore = { ...newAccount, passwordHash };
+      accounts[cleanHandle] = accountToStore;
+      if (newAccount.email) accounts[newAccount.email.toLowerCase()] = accountToStore;
       localStorage.setItem(ACCOUNTS_REGISTRY_KEY, JSON.stringify(accounts));
     } catch {}
 
@@ -334,6 +339,9 @@ export function useBeamStore() {
     if (!query) {
       return { success: false, error: "Please enter your handle or email." };
     }
+    if (!passphrase) {
+      return { success: false, error: "Please enter your cryptographic passphrase." };
+    }
 
     const remoteResult = await authenticateProfileInDb(query, passphrase);
     if (remoteResult.success && remoteResult.user) {
@@ -342,8 +350,10 @@ export function useBeamStore() {
       try {
         const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
         const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
-        accounts[loggedInUser.handle] = loggedInUser;
-        if (loggedInUser.email) accounts[loggedInUser.email.toLowerCase()] = loggedInUser;
+        const passwordHash = await hashPassphrase(passphrase, loggedInUser.handle.toLowerCase());
+        const accountToStore = { ...loggedInUser, passwordHash };
+        accounts[loggedInUser.handle] = accountToStore;
+        if (loggedInUser.email) accounts[loggedInUser.email.toLowerCase()] = accountToStore;
         localStorage.setItem(ACCOUNTS_REGISTRY_KEY, JSON.stringify(accounts));
       } catch {}
 
@@ -352,11 +362,33 @@ export function useBeamStore() {
       return { success: true, user: loggedInUser };
     }
 
+    // If database returned an error (e.g. invalid passphrase), FAIL IMMEDIATELY.
+    // Do NOT fall back to localStorage without password verification!
+    if (!remoteResult.notFound) {
+      return {
+        success: false,
+        error: remoteResult.error || "Invalid passphrase. Authentication failed.",
+      };
+    }
+
+    // Only if not found in remote database, check local offline accounts with strict hash check
     try {
       const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
       const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
       const matched = accounts[query];
       if (matched) {
+        if (matched.passwordHash) {
+          const computed = await hashPassphrase(passphrase, matched.handle.toLowerCase());
+          if (computed !== matched.passwordHash) {
+            return { success: false, error: "Invalid passphrase. Authentication failed." };
+          }
+        } else {
+          return {
+            success: false,
+            error: "No secure passphrase was registered for this local identity. Please sign up to set your secret key.",
+          };
+        }
+
         const loggedInUser: UserAccount = { ...matched, isLoggedIn: true };
         setStoreState(() => ({ user: loggedInUser }));
         setupSupabaseSync(loggedInUser);
@@ -366,7 +398,7 @@ export function useBeamStore() {
 
     return {
       success: false,
-      notFound: remoteResult.notFound ?? true,
+      notFound: true,
       error: remoteResult.error || `Handle or email "${query}" is not registered. Claim this username to get started!`,
     };
   };
