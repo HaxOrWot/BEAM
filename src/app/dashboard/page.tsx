@@ -18,7 +18,10 @@ function DashboardContent() {
   };
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto px-6 pb-20 space-y-8">
+    <div
+      className="relative w-full max-w-7xl mx-auto px-6 pb-20 space-y-8"
+      suppressHydrationWarning
+    >
       {/* Glow Layer */}
       <div className="absolute -top-10 left-1/4 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute top-24 right-1/4 w-80 h-80 bg-secondary-container/10 rounded-full blur-3xl pointer-events-none -z-10" />
