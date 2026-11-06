@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useBeamStore } from "@/lib/store";
 import {
   Zap,
   Lock,
@@ -17,12 +19,16 @@ import {
   Bell,
   RefreshCw,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 
 export const HeroSection: React.FC = () => {
+  const router = useRouter();
+  const { user } = useBeamStore();
   const [recipient, setRecipient] = useState("elena");
   const [ttlHours, setTtlHours] = useState(24);
   const [isSending, setIsSending] = useState(false);
+  const [demoDone, setDemoDone] = useState(false);
   const [progress, setProgress] = useState(75);
 
   const mockQueue = [
@@ -47,18 +53,25 @@ export const HeroSection: React.FC = () => {
   ];
 
   const handleSendSimulate = () => {
+    if (user.isLoggedIn) {
+      router.push(`/dashboard?target=${encodeURIComponent(recipient)}`);
+      return;
+    }
+
     setIsSending(true);
-    setProgress(15);
+    setDemoDone(false);
+    setProgress(20);
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsSending(false);
+          setDemoDone(true);
           return 100;
         }
-        return prev + 15;
+        return prev + 20;
       });
-    }, 300);
+    }, 250);
   };
 
   return (
@@ -288,27 +301,41 @@ export const HeroSection: React.FC = () => {
               </div>
 
               {/* Main Action Trigger */}
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={handleSendSimulate}
-                  disabled={isSending}
-                  className="w-full bg-primary-container hover:bg-primary text-on-primary-container hover:text-on-primary font-heading text-sm font-semibold py-3 px-6 rounded-full transition-all flex items-center justify-center gap-2 shadow-lg"
-                >
-                  {isSending ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Streaming to @{recipient}...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      <span>Send Instantly to @{recipient}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-                <div className="text-center font-mono text-[10px] text-outline mt-2">
+              <div className="mt-4 flex flex-col gap-2">
+                {demoDone && !user.isLoggedIn ? (
+                  <Link
+                    href={`/signup?handle=${encodeURIComponent(recipient)}`}
+                    className="w-full bg-secondary text-surface font-heading text-sm font-semibold py-3 px-6 rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:brightness-110"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Demo Complete! Claim Handle to Send Real Files →</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendSimulate}
+                    disabled={isSending}
+                    className="w-full bg-primary-container hover:bg-primary text-on-primary-container hover:text-on-primary font-heading text-sm font-semibold py-3 px-6 rounded-full transition-all flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    {isSending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Streaming to @{recipient}...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>
+                          {user.isLoggedIn
+                            ? `Open Dashboard to Send to @${recipient}`
+                            : `Send Instantly to @${recipient}`}
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                )}
+                <div className="text-center font-mono text-[10px] text-outline">
                   Direct encrypted tunnel • No cloud storage copy preserved
                 </div>
               </div>

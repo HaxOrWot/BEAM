@@ -43,4 +43,6 @@ export interface UserAccount {
   storageUsedBytes: number;
   avatarUrl: string;
   isLoggedIn: boolean;
+  passwordHash?: string;
+  createdAt?: number;
 }

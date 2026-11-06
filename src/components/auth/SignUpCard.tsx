@@ -20,7 +20,7 @@ import { useBeamStore } from "@/lib/store";
 export const SignUpCard: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { updateAccount } = useBeamStore();
+  const { checkHandleAvailability, registerAccount } = useBeamStore();
 
   const [handle, setHandle] = useState("");
   const [fullName, setFullName] = useState("");
@@ -30,6 +30,7 @@ export const SignUpCard: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<"free" | "pro">("pro");
   const [acceptTerms, setAcceptTerms] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
   const [status, setStatus] = useState<{ available: boolean; message: string }>({
     available: true,
     message: "Ready",
@@ -40,25 +41,25 @@ export const SignUpCard: React.FC = () => {
     if (queryHandle) {
       const clean = queryHandle.toLowerCase().replace(/[^a-z0-9._-]/g, "");
       setHandle(clean);
-    } else {
-      setHandle("alex");
     }
   }, [searchParams]);
 
   useEffect(() => {
     const clean = handle.trim().toLowerCase();
-    const reserved = ["admin", "root", "support", "beam", "system", "api", "help"];
-
-    if (!clean || clean.length < 3) {
-      setStatus({ available: false, message: "Min 3 chars" });
-    } else if (reserved.includes(clean)) {
-      setStatus({ available: false, message: `@${clean} reserved` });
-    } else {
-      setStatus({ available: true, message: `@${clean} is available!` });
+    if (!clean) {
+      setStatus({ available: false, message: "Enter a handle" });
+      return;
     }
-  }, [handle]);
 
-  // Calculate password strength
+    const res = checkHandleAvailability(clean);
+    if (res.available) {
+      setStatus({ available: true, message: `@${clean} is available!` });
+    } else {
+      setStatus({ available: false, message: res.reason || "Handle unavailable" });
+    }
+  }, [handle, checkHandleAvailability]);
+
+  // Calculate passphrase strength
   const getStrength = (pass: string) => {
     if (!pass) return { label: "Empty", percent: 0, color: "bg-outline" };
     if (pass.length < 6) return { label: "Weak", percent: 25, color: "bg-error" };
@@ -68,26 +69,34 @@ export const SignUpCard: React.FC = () => {
 
   const strength = getStrength(passphrase);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!status.available || !acceptTerms) return;
+    setFormError("");
+
+    if (!status.available) {
+      setFormError(status.message);
+      return;
+    }
+    if (!acceptTerms) {
+      setFormError("Please accept the Decentralized Service Terms to proceed.");
+      return;
+    }
 
     setLoading(true);
-
-    const cleanHandle = handle.trim().toLowerCase() || "user";
-    updateAccount({
-      handle: cleanHandle,
-      fullName: fullName || cleanHandle,
-      email: email || `${cleanHandle}@beam.network`,
+    const result = await registerAccount({
+      handle,
+      fullName,
+      email,
+      passphrase,
       plan: selectedPlan,
-      storageLimitBytes: selectedPlan === "pro" ? 250 * 1024 * 1024 * 1024 : 25 * 1024 * 1024 * 1024,
-      isLoggedIn: true,
     });
+    setLoading(false);
 
-    setTimeout(() => {
-      setLoading(false);
+    if (result.success) {
       router.push("/dashboard");
-    }, 700);
+    } else {
+      setFormError(result.error || "Failed to register account.");
+    }
   };
 
   return (
@@ -111,6 +120,13 @@ export const SignUpCard: React.FC = () => {
           Your personal portal to receive and send massive files seamlessly with zero friction.
         </p>
       </div>
+
+      {formError && (
+        <div className="w-full mb-6 p-3 rounded-2xl bg-error/15 border border-error/30 text-error text-xs font-mono flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{formError}</span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Handle & Credentials */}
@@ -147,7 +163,7 @@ export const SignUpCard: React.FC = () => {
                 type="text"
                 value={handle}
                 onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
-                placeholder="yourname"
+                placeholder="yourhandle"
                 maxLength={24}
                 className="w-full bg-transparent font-mono text-sm text-primary font-medium focus:outline-none"
               />
@@ -159,7 +175,7 @@ export const SignUpCard: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant block mb-2">Recommended alternatives:</span>
               <div className="flex flex-wrap gap-2">
-                {[`${handle || "alex"}.eth`, `${handle || "alex"}.vault`, `hyper_${handle || "alex"}`, `${handle || "alex"}_io`].map((alt) => (
+                {[`${handle || "alex"}.vault`, `hyper_${handle || "alex"}`, `${handle || "alex"}_p2p`, `${handle || "alex"}_beam`].map((alt) => (
                   <button
                     key={alt}
                     type="button"

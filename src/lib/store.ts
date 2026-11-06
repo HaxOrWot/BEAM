@@ -1,38 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { StagedFile, TransferRecord, UserAccount } from "./types";
 import { computeSHA256 } from "./utils";
 
-const USER_STORAGE_KEY = "beam_user_account";
-const STAGED_STORAGE_KEY = "beam_staged_files";
+const USER_STORAGE_KEY = "beam_active_session";
+const ACCOUNTS_REGISTRY_KEY = "beam_accounts_registry";
 const TRANSFERS_STORAGE_KEY = "beam_transfers";
 
-const DEFAULT_USER: UserAccount = {
-  handle: "alexchen",
-  fullName: "Alex Chen",
-  email: "alex@nexuslabs.studio",
-  plan: "pro",
-  nodeId: "084",
+const DEFAULT_GUEST: UserAccount = {
+  handle: "",
+  fullName: "",
+  email: "",
+  plan: "free",
+  nodeId: "",
   gatewayNode: "Frankfurt-01 (18ms ping)",
-  storageLimitBytes: 100 * 1024 * 1024 * 1024, // 100 GB
-  storageUsedBytes: 42.5 * 1024 * 1024 * 1024, // 42.5 GB
+  storageLimitBytes: 25 * 1024 * 1024 * 1024, // 25 GB default
+  storageUsedBytes: 0,
   avatarUrl: "",
-  isLoggedIn: true,
+  isLoggedIn: false,
 };
 
 export function useBeamStore() {
-  const [user, setUser] = useState<UserAccount>(DEFAULT_USER);
+  const [user, setUser] = useState<UserAccount>(DEFAULT_GUEST);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Initialize store from localStorage on mount
   useEffect(() => {
     try {
-      const savedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+      // Clean up legacy mock user if present
+      localStorage.removeItem("beam_user_account");
+
+      const savedSession = localStorage.getItem(USER_STORAGE_KEY);
+      if (savedSession) {
+        const parsed: UserAccount = JSON.parse(savedSession);
+        // Ensure legacy google_user or mock alexchen defaults are discarded
+        if (parsed && parsed.isLoggedIn && parsed.handle && parsed.handle !== "google_user") {
+          setUser(parsed);
+        } else {
+          setUser(DEFAULT_GUEST);
+        }
+      } else {
+        setUser(DEFAULT_GUEST);
       }
 
       const savedTransfers = localStorage.getItem(TRANSFERS_STORAGE_KEY);
@@ -40,25 +51,156 @@ export function useBeamStore() {
         setTransfers(JSON.parse(savedTransfers));
       }
     } catch {
-      // Ignore parse errors on first load
+      setUser(DEFAULT_GUEST);
     }
     setIsLoaded(true);
   }, []);
 
-  // Save changes to localStorage
+  // Sync active session
   useEffect(() => {
     if (!isLoaded) return;
     try {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      if (user.isLoggedIn) {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(USER_STORAGE_KEY);
+      }
     } catch {}
   }, [user, isLoaded]);
 
+  // Sync transfers
   useEffect(() => {
     if (!isLoaded) return;
     try {
       localStorage.setItem(TRANSFERS_STORAGE_KEY, JSON.stringify(transfers));
     } catch {}
   }, [transfers, isLoaded]);
+
+  // Check handle availability
+  const checkHandleAvailability = useCallback((handle: string) => {
+    const clean = handle.trim().toLowerCase().replace(/^@/, "");
+    const reserved = ["admin", "root", "support", "beam", "system", "api", "help", "login", "signup", "dashboard"];
+
+    if (!clean || clean.length < 3) {
+      return { available: false, reason: "Handle must be at least 3 characters." };
+    }
+    if (reserved.includes(clean)) {
+      return { available: false, reason: `@${clean} is a reserved system handle.` };
+    }
+
+    try {
+      const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
+      const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
+      if (accounts[clean]) {
+        return { available: false, reason: `@${clean} has already been claimed.` };
+      }
+    } catch {}
+
+    return { available: true };
+  }, []);
+
+  // Register new account & claim handle
+  const registerAccount = async (params: {
+    handle: string;
+    fullName: string;
+    email: string;
+    passphrase?: string;
+    plan: "free" | "pro";
+  }) => {
+    const cleanHandle = params.handle.trim().toLowerCase().replace(/^@/, "");
+    const check = checkHandleAvailability(cleanHandle);
+    if (!check.available) {
+      return { success: false, error: check.reason };
+    }
+
+    const nodeId = Math.floor(100 + Math.random() * 900).toString();
+    const storageLimit = params.plan === "pro" ? 250 * 1024 * 1024 * 1024 : 25 * 1024 * 1024 * 1024;
+
+    const newAccount: UserAccount = {
+      handle: cleanHandle,
+      fullName: params.fullName.trim() || cleanHandle,
+      email: params.email.trim() || `${cleanHandle}@beam.network`,
+      plan: params.plan,
+      nodeId,
+      gatewayNode: "Frankfurt-01 (18ms ping)",
+      storageLimitBytes: storageLimit,
+      storageUsedBytes: 0,
+      avatarUrl: "",
+      isLoggedIn: true,
+      createdAt: Date.now(),
+    };
+
+    try {
+      const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
+      const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
+      accounts[cleanHandle] = newAccount;
+      // Also index by email for login lookup
+      if (newAccount.email) {
+        accounts[newAccount.email.toLowerCase()] = newAccount;
+      }
+      localStorage.setItem(ACCOUNTS_REGISTRY_KEY, JSON.stringify(accounts));
+    } catch {}
+
+    setUser(newAccount);
+    return { success: true, user: newAccount };
+  };
+
+  // Sign in with handle or email
+  const loginWithCredentials = async (handleOrEmail: string, _passphrase?: string) => {
+    const query = handleOrEmail.trim().toLowerCase().replace(/^@/, "");
+    if (!query) {
+      return { success: false, error: "Please enter your handle or email." };
+    }
+
+    try {
+      const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
+      const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
+
+      const matched = accounts[query];
+      if (matched) {
+        const loggedInUser: UserAccount = { ...matched, isLoggedIn: true };
+        setUser(loggedInUser);
+        return { success: true, user: loggedInUser };
+      }
+    } catch {}
+
+    return {
+      success: false,
+      notFound: true,
+      error: `Handle or email "${query}" is not registered. Claim this username to get started!`,
+    };
+  };
+
+  // Quick Hardware Passkey Authentication
+  const loginWithPasskey = async () => {
+    try {
+      const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
+      const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
+      const handles = Object.keys(accounts);
+
+      if (handles.length > 0) {
+        // Authenticate with the first or most recently used account
+        const account = accounts[handles[0]];
+        const loggedInUser: UserAccount = { ...account, isLoggedIn: true };
+        setUser(loggedInUser);
+        return { success: true, user: loggedInUser };
+      }
+    } catch {}
+
+    return {
+      success: false,
+      error: "No local hardware identity found. Please claim your handle first.",
+    };
+  };
+
+  // Sign out
+  const logout = () => {
+    setUser(DEFAULT_GUEST);
+    setStagedFiles([]);
+    try {
+      localStorage.removeItem(USER_STORAGE_KEY);
+    } catch {}
+  };
 
   // Real file staging
   const addRealFiles = async (files: FileList | File[]) => {
@@ -103,7 +245,7 @@ export function useBeamStore() {
     burnOnDownload?: boolean;
     maxDownloads?: number;
   }) => {
-    if (stagedFiles.length === 0) return null;
+    if (stagedFiles.length === 0 || !user.isLoggedIn) return null;
 
     const totalBytes = stagedFiles.reduce((acc, f) => acc + f.size, 0);
 
@@ -155,21 +297,20 @@ export function useBeamStore() {
     URL.revokeObjectURL(url);
   };
 
-  // Update account
-  const updateAccount = (updates: Partial<UserAccount>) => {
-    setUser((prev) => ({ ...prev, ...updates }));
-  };
-
   return {
     user,
     stagedFiles,
     transfers,
     isLoaded,
+    checkHandleAvailability,
+    registerAccount,
+    loginWithCredentials,
+    loginWithPasskey,
+    logout,
     addRealFiles,
     removeStagedFile,
     clearStagedFiles,
     dispatchBeam,
     triggerFileDownload,
-    updateAccount,
   };
 }
