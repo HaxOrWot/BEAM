@@ -75,7 +75,16 @@ export class BeamP2PEngine {
   public initSignaling(): void {
     if (!this.localHandle) return;
 
-    const channelName = `beam:signal:${this.localHandle}`;
+    const safeHandle = this.localHandle.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const channelName = `beam_signal_${safeHandle}`;
+
+    const existing = supabase
+      .getChannels()
+      .find((c) => c.topic === `realtime:${channelName}` || c.topic === channelName);
+    if (existing) {
+      supabase.removeChannel(existing);
+    }
+
     this.signalingChannel = supabase.channel(channelName, {
       config: { broadcast: { self: false } },
     });
@@ -356,7 +365,9 @@ export class BeamP2PEngine {
     event: string,
     payload: Record<string, unknown>
   ): Promise<void> {
-    const channelName = `beam:signal:${targetHandle}`;
+    const cleanTarget = targetHandle.toLowerCase().replace(/^@/, "");
+    const safeTarget = cleanTarget.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const channelName = `beam_signal_${safeTarget}`;
     const channel = supabase.channel(channelName);
     await channel.send({
       type: "broadcast",
@@ -368,6 +379,7 @@ export class BeamP2PEngine {
   public destroy(): void {
     if (this.signalingChannel) {
       supabase.removeChannel(this.signalingChannel);
+      this.signalingChannel = null;
     }
     this.peerConnections.forEach((pc) => pc.close());
     this.peerConnections.clear();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useSyncExternalStore, useEffect, useCallback } from "react";
 import { StagedFile, TransferRecord, UserAccount } from "./types";
 import { computeSHA256 } from "./utils";
 import {
@@ -24,133 +24,229 @@ const DEFAULT_GUEST: UserAccount = {
   plan: "free",
   nodeId: "",
   gatewayNode: "Frankfurt-01 (18ms ping)",
-  storageLimitBytes: 25 * 1024 * 1024 * 1024, // 25 GB default
+  storageLimitBytes: 25 * 1024 * 1024 * 1024,
   storageUsedBytes: 0,
   avatarUrl: "",
   isLoggedIn: false,
 };
 
-export function useBeamStore() {
-  const [user, setUser] = useState<UserAccount>(DEFAULT_GUEST);
-  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
-  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+interface StoreState {
+  user: UserAccount;
+  stagedFiles: StagedFile[];
+  transfers: TransferRecord[];
+  isLoaded: boolean;
+}
 
-  // Initialize store from localStorage on mount
-  useEffect(() => {
+let storeState: StoreState = {
+  user: DEFAULT_GUEST,
+  stagedFiles: [],
+  transfers: [],
+  isLoaded: false,
+};
+
+const listeners = new Set<() => void>();
+
+function emitChange() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function setStoreState(updater: (prev: StoreState) => Partial<StoreState>) {
+  const updates = updater(storeState);
+  storeState = { ...storeState, ...updates };
+
+  if (typeof window !== "undefined" && storeState.isLoaded) {
     try {
-      // Clean up legacy mock user if present
-      localStorage.removeItem("beam_user_account");
-
-      const savedSession = localStorage.getItem(USER_STORAGE_KEY);
-      if (savedSession) {
-        const parsed: UserAccount = JSON.parse(savedSession);
-        // Ensure legacy google_user or mock alexchen defaults are discarded
-        if (parsed && parsed.isLoggedIn && parsed.handle && parsed.handle !== "google_user") {
-          setUser(parsed);
-        } else {
-          setUser(DEFAULT_GUEST);
-        }
-      } else {
-        setUser(DEFAULT_GUEST);
-      }
-
-      const savedTransfers = localStorage.getItem(TRANSFERS_STORAGE_KEY);
-      if (savedTransfers) {
-        setTransfers(JSON.parse(savedTransfers));
-      }
-    } catch {
-      setUser(DEFAULT_GUEST);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // Sync active session
-  useEffect(() => {
-    if (!isLoaded) return;
-    try {
-      if (user.isLoggedIn) {
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      if (storeState.user.isLoggedIn) {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(storeState.user));
       } else {
         localStorage.removeItem(USER_STORAGE_KEY);
       }
+      localStorage.setItem(TRANSFERS_STORAGE_KEY, JSON.stringify(storeState.transfers));
     } catch {}
-  }, [user, isLoaded]);
+  }
 
-  // Sync transfers to localStorage
-  useEffect(() => {
-    if (!isLoaded) return;
-    try {
-      localStorage.setItem(TRANSFERS_STORAGE_KEY, JSON.stringify(transfers));
-    } catch {}
-  }, [transfers, isLoaded]);
+  emitChange();
+}
 
-  // Sync active user with Supabase Realtime & presence
-  useEffect(() => {
-    if (!isLoaded || !user.isLoggedIn || !user.handle) return;
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
-    // 1. Initial transfers fetch from Supabase
-    fetchTransfersFromDb(user.handle).then((dbTransfers) => {
-      if (dbTransfers && dbTransfers.length > 0) {
-        setTransfers(dbTransfers);
-      }
-    });
+function getSnapshot(): StoreState {
+  return storeState;
+}
 
-    // 2. Set node presence
+const SERVER_SNAPSHOT: StoreState = {
+  user: DEFAULT_GUEST,
+  stagedFiles: [],
+  transfers: [],
+  isLoaded: false,
+};
+
+function getServerSnapshot(): StoreState {
+  return SERVER_SNAPSHOT;
+}
+
+// Single active Supabase Realtime channel manager
+let activeTransferChannel: ReturnType<typeof supabase.channel> | null = null;
+let activePresenceTimer: ReturnType<typeof setInterval> | null = null;
+let currentSubscribedHandle = "";
+
+function cleanupSupabaseSync() {
+  if (activePresenceTimer) {
+    clearInterval(activePresenceTimer);
+    activePresenceTimer = null;
+  }
+  if (activeTransferChannel) {
+    supabase.removeChannel(activeTransferChannel);
+    activeTransferChannel = null;
+  }
+  currentSubscribedHandle = "";
+}
+
+function setupSupabaseSync(user: UserAccount) {
+  if (!user.isLoggedIn || !user.handle) {
+    cleanupSupabaseSync();
+    return;
+  }
+
+  // Avoid duplicate subscriptions if already subscribed for this user
+  if (currentSubscribedHandle === user.handle && activeTransferChannel) {
+    return;
+  }
+
+  cleanupSupabaseSync();
+  currentSubscribedHandle = user.handle;
+
+  // 1. Initial transfers fetch from Supabase
+  fetchTransfersFromDb(user.handle).then((dbTransfers) => {
+    if (dbTransfers && dbTransfers.length > 0) {
+      setStoreState(() => ({
+        transfers: dbTransfers,
+      }));
+    }
+  });
+
+  // 2. Set node presence & heartbeat
+  updatePresenceInDb(user.handle, user.nodeId || "001");
+  activePresenceTimer = setInterval(() => {
     updatePresenceInDb(user.handle, user.nodeId || "001");
-    const presenceTimer = setInterval(() => {
-      updatePresenceInDb(user.handle, user.nodeId || "001");
-    }, 45000);
+  }, 45000);
 
-    // 3. Realtime subscription on transfers table
-    const transferChannel = supabase
-      .channel(`realtime:transfers:${user.handle}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "transfers",
-        },
-        (payload) => {
-          const row = payload.new as Record<string, unknown>;
-          const recipient = String(row.recipient_handle || "").toLowerCase();
-          const sender = String(row.sender_handle || "").toLowerCase();
-          const myHandle = user.handle.toLowerCase();
+  // 3. Setup single realtime channel
+  const safeHandle = user.handle.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const channelName = `beam_transfers_${safeHandle}`;
 
-          if (recipient === myHandle || sender === myHandle) {
-            const incomingRecord: TransferRecord = {
-              id: String(row.id),
-              recipientHandle: String(row.recipient_handle),
-              senderHandle: String(row.sender_handle),
-              files: (row.files as TransferRecord["files"]) || [],
-              totalBytes: Number(row.total_bytes || 0),
-              status: (row.status as TransferRecord["status"]) || "completed",
-              progress: 100,
-              speedMBs: 48.2,
-              ttlHours: Number(row.ttl_hours || 24),
-              passkeyLock: Boolean(row.passkey_lock),
-              burnOnDownload: Boolean(row.burn_on_download),
-              maxDownloads: Number(row.max_downloads || 3),
-              downloadCount: Number(row.download_count || 0),
-              createdAt: new Date(String(row.created_at || Date.now())).getTime(),
-              expiresAt: new Date(String(row.expires_at || Date.now())).getTime(),
-            };
+  // Clean up any existing channel with this name before creating
+  const existing = supabase
+    .getChannels()
+    .find((ch) => ch.topic === `realtime:${channelName}` || ch.topic === channelName);
+  if (existing) {
+    supabase.removeChannel(existing);
+  }
 
-            setTransfers((prev) => {
-              if (prev.some((t) => t.id === incomingRecord.id)) return prev;
-              return [incomingRecord, ...prev];
-            });
-          }
+  const channel = supabase.channel(channelName);
+  activeTransferChannel = channel;
+
+  channel
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "transfers",
+      },
+      (payload) => {
+        const row = payload.new as Record<string, unknown>;
+        const recipient = String(row.recipient_handle || "").toLowerCase();
+        const sender = String(row.sender_handle || "").toLowerCase();
+        const myHandle = user.handle.toLowerCase();
+
+        if (recipient === myHandle || sender === myHandle) {
+          const incomingRecord: TransferRecord = {
+            id: String(row.id),
+            recipientHandle: String(row.recipient_handle),
+            senderHandle: String(row.sender_handle),
+            files: (row.files as TransferRecord["files"]) || [],
+            totalBytes: Number(row.total_bytes || 0),
+            status: (row.status as TransferRecord["status"]) || "completed",
+            progress: 100,
+            speedMBs: 48.2,
+            ttlHours: Number(row.ttl_hours || 24),
+            passkeyLock: Boolean(row.passkey_lock),
+            burnOnDownload: Boolean(row.burn_on_download),
+            maxDownloads: Number(row.max_downloads || 3),
+            downloadCount: Number(row.download_count || 0),
+            createdAt: new Date(String(row.created_at || Date.now())).getTime(),
+            expiresAt: new Date(String(row.expires_at || Date.now())).getTime(),
+          };
+
+          setStoreState((prev) => {
+            if (prev.transfers.some((t) => t.id === incomingRecord.id)) return {};
+            return { transfers: [incomingRecord, ...prev.transfers] };
+          });
         }
-      )
-      .subscribe();
+      }
+    )
+    .subscribe();
+}
 
-    return () => {
-      clearInterval(presenceTimer);
-      supabase.removeChannel(transferChannel);
+// Module-level initial hydration
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem("beam_user_account");
+
+    const savedSession = localStorage.getItem(USER_STORAGE_KEY);
+    let loadedUser = DEFAULT_GUEST;
+    if (savedSession) {
+      const parsed: UserAccount = JSON.parse(savedSession);
+      if (parsed && parsed.isLoggedIn && parsed.handle && parsed.handle !== "google_user") {
+        loadedUser = parsed;
+      }
+    }
+
+    const savedTransfers = localStorage.getItem(TRANSFERS_STORAGE_KEY);
+    let loadedTransfers: TransferRecord[] = [];
+    if (savedTransfers) {
+      loadedTransfers = JSON.parse(savedTransfers);
+    }
+
+    storeState = {
+      user: loadedUser,
+      stagedFiles: [],
+      transfers: loadedTransfers,
+      isLoaded: true,
     };
-  }, [isLoaded, user.isLoggedIn, user.handle, user.nodeId]);
+
+    if (loadedUser.isLoggedIn) {
+      setupSupabaseSync(loadedUser);
+    }
+  } catch {
+    storeState = {
+      user: DEFAULT_GUEST,
+      stagedFiles: [],
+      transfers: [],
+      isLoaded: true,
+    };
+  }
+}
+
+export function useBeamStore() {
+  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  // Sync Supabase whenever user identity changes
+  useEffect(() => {
+    if (state.isLoaded && state.user.isLoggedIn) {
+      setupSupabaseSync(state.user);
+    } else if (state.isLoaded && !state.user.isLoggedIn) {
+      cleanupSupabaseSync();
+    }
+  }, [state.isLoaded, state.user.isLoggedIn, state.user.handle]);
 
   // Check handle availability (synchronous preliminary check)
   const checkHandleAvailability = useCallback((handle: string) => {
@@ -179,11 +275,14 @@ export function useBeamStore() {
   }, []);
 
   // Async handle availability check against remote Supabase
-  const checkHandleAvailabilityAsync = useCallback(async (handle: string) => {
-    const local = checkHandleAvailability(handle);
-    if (!local.available) return local;
-    return await isHandleAvailableInDb(handle);
-  }, [checkHandleAvailability]);
+  const checkHandleAvailabilityAsync = useCallback(
+    async (handle: string) => {
+      const local = checkHandleAvailability(handle);
+      if (!local.available) return local;
+      return await isHandleAvailableInDb(handle);
+    },
+    [checkHandleAvailability]
+  );
 
   // Register new account & claim handle via Supabase
   const registerAccount = async (params: {
@@ -199,7 +298,6 @@ export function useBeamStore() {
       return { success: false, error: check.reason };
     }
 
-    // Write to remote Supabase profiles table
     const remoteResult = await createProfileInDb({
       handle: cleanHandle,
       fullName: params.fullName,
@@ -214,19 +312,16 @@ export function useBeamStore() {
 
     const newAccount = remoteResult.user;
 
-    // Cache locally
     try {
       const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
       const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
       accounts[cleanHandle] = newAccount;
-      if (newAccount.email) {
-        accounts[newAccount.email.toLowerCase()] = newAccount;
-      }
+      if (newAccount.email) accounts[newAccount.email.toLowerCase()] = newAccount;
       localStorage.setItem(ACCOUNTS_REGISTRY_KEY, JSON.stringify(accounts));
     } catch {}
 
-    setUser(newAccount);
-    updatePresenceInDb(newAccount.handle, newAccount.nodeId);
+    setStoreState(() => ({ user: newAccount }));
+    setupSupabaseSync(newAccount);
     return { success: true, user: newAccount };
   };
 
@@ -237,14 +332,10 @@ export function useBeamStore() {
       return { success: false, error: "Please enter your handle or email." };
     }
 
-    // Try authenticating with Supabase
     const remoteResult = await authenticateProfileInDb(query);
     if (remoteResult.success && remoteResult.user) {
       const loggedInUser = remoteResult.user;
-      setUser(loggedInUser);
-      updatePresenceInDb(loggedInUser.handle, loggedInUser.nodeId);
 
-      // Cache locally
       try {
         const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
         const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
@@ -253,23 +344,19 @@ export function useBeamStore() {
         localStorage.setItem(ACCOUNTS_REGISTRY_KEY, JSON.stringify(accounts));
       } catch {}
 
-      // Fetch user's existing transfers
-      const userTransfers = await fetchTransfersFromDb(loggedInUser.handle);
-      if (userTransfers.length > 0) {
-        setTransfers(userTransfers);
-      }
-
+      setStoreState(() => ({ user: loggedInUser }));
+      setupSupabaseSync(loggedInUser);
       return { success: true, user: loggedInUser };
     }
 
-    // Fallback to local registry if offline
     try {
       const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
       const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
       const matched = accounts[query];
       if (matched) {
         const loggedInUser: UserAccount = { ...matched, isLoggedIn: true };
-        setUser(loggedInUser);
+        setStoreState(() => ({ user: loggedInUser }));
+        setupSupabaseSync(loggedInUser);
         return { success: true, user: loggedInUser };
       }
     } catch {}
@@ -289,10 +376,10 @@ export function useBeamStore() {
       const handles = Object.keys(accounts);
 
       if (handles.length > 0) {
-        // Authenticate with the first or most recently used account
         const account = accounts[handles[0]];
         const loggedInUser: UserAccount = { ...account, isLoggedIn: true };
-        setUser(loggedInUser);
+        setStoreState(() => ({ user: loggedInUser }));
+        setupSupabaseSync(loggedInUser);
         return { success: true, user: loggedInUser };
       }
     } catch {}
@@ -305,11 +392,11 @@ export function useBeamStore() {
 
   // Sign out
   const logout = () => {
-    setUser(DEFAULT_GUEST);
-    setStagedFiles([]);
-    try {
-      localStorage.removeItem(USER_STORAGE_KEY);
-    } catch {}
+    cleanupSupabaseSync();
+    setStoreState(() => ({
+      user: DEFAULT_GUEST,
+      stagedFiles: [],
+    }));
   };
 
   // Real file staging
@@ -330,15 +417,21 @@ export function useBeamStore() {
       });
     }
 
-    setStagedFiles((prev) => [...prev, ...newItems]);
+    setStoreState((prev) => ({
+      stagedFiles: [...prev.stagedFiles, ...newItems],
+    }));
   };
 
   const removeStagedFile = (id: string) => {
-    setStagedFiles((prev) => prev.filter((f) => f.id !== id));
+    setStoreState((prev) => ({
+      stagedFiles: prev.stagedFiles.filter((f) => f.id !== id),
+    }));
   };
 
   const clearStagedFiles = () => {
-    setStagedFiles([]);
+    setStoreState(() => ({
+      stagedFiles: [],
+    }));
   };
 
   // Real beam dispatch
@@ -355,15 +448,15 @@ export function useBeamStore() {
     burnOnDownload?: boolean;
     maxDownloads?: number;
   }) => {
-    if (stagedFiles.length === 0 || !user.isLoggedIn) return null;
+    if (state.stagedFiles.length === 0 || !state.user.isLoggedIn) return null;
 
-    const totalBytes = stagedFiles.reduce((acc, f) => acc + f.size, 0);
+    const totalBytes = state.stagedFiles.reduce((acc, f) => acc + f.size, 0);
 
     const record: TransferRecord = {
       id: `beam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       recipientHandle: recipientHandle.replace(/^@/, "").trim(),
-      senderHandle: user.handle,
-      files: stagedFiles.map((f) => ({
+      senderHandle: state.user.handle,
+      files: state.stagedFiles.map((f) => ({
         name: f.name,
         size: f.size,
         type: f.type,
@@ -382,16 +475,17 @@ export function useBeamStore() {
       expiresAt: Date.now() + ttlHours * 3600 * 1000,
     };
 
-    // Save transfer to Supabase remote database
     await saveTransferToDb(record);
 
-    setTransfers((prev) => [record, ...prev]);
-    setUser((prev) => ({
-      ...prev,
-      storageUsedBytes: Math.min(prev.storageLimitBytes, prev.storageUsedBytes + totalBytes),
+    setStoreState((prev) => ({
+      transfers: [record, ...prev.transfers],
+      user: {
+        ...prev.user,
+        storageUsedBytes: Math.min(prev.user.storageLimitBytes, prev.user.storageUsedBytes + totalBytes),
+      },
+      stagedFiles: [],
     }));
 
-    clearStagedFiles();
     return record;
   };
 
@@ -399,9 +493,10 @@ export function useBeamStore() {
   const triggerFileDownload = (fileName: string, blob?: Blob) => {
     const targetBlob =
       blob ||
-      new Blob([`Beam Encrypted File Container: ${fileName}\nIntegrity: SHA-256 Validated\nEncrypted Stream Container`], {
-        type: "application/octet-stream",
-      });
+      new Blob(
+        [`Beam Encrypted File Container: ${fileName}\nIntegrity: SHA-256 Validated\nEncrypted Stream Container`],
+        { type: "application/octet-stream" }
+      );
     const url = URL.createObjectURL(targetBlob);
     const a = document.createElement("a");
     a.href = url;
@@ -413,10 +508,10 @@ export function useBeamStore() {
   };
 
   return {
-    user,
-    stagedFiles,
-    transfers,
-    isLoaded,
+    user: state.user,
+    stagedFiles: state.stagedFiles,
+    transfers: state.transfers,
+    isLoaded: state.isLoaded,
     checkHandleAvailability,
     checkHandleAvailabilityAsync,
     registerAccount,
