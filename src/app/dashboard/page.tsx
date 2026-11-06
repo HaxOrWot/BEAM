@@ -8,6 +8,7 @@ import { TransferStation } from "@/components/dashboard/TransferStation";
 import { ActivityDeck } from "@/components/dashboard/ActivityDeck";
 import { RoutingTelemetry } from "@/components/dashboard/RoutingTelemetry";
 import { useBeamStore } from "@/lib/store";
+import { P2PProvider } from "@/lib/p2p/P2PProvider";
 import { Lock, Sparkles, LogIn } from "lucide-react";
 
 function DashboardContent() {
@@ -84,7 +85,7 @@ function DashboardContent() {
         {/* Left Col: Transfer Station */}
         <div className="lg:col-span-7">
           <TransferStation
-            initialRecipient={targetParam || "sarah_design"}
+            initialRecipient={targetParam || ""}
             targetInputRef={targetInputRef}
           />
         </div>
@@ -102,7 +103,9 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="text-center font-mono text-outline py-20">Loading dashboard...</div>}>
-      <DashboardContent />
+      <P2PProvider>
+        <DashboardContent />
+      </P2PProvider>
     </Suspense>
   );
 }

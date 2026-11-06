@@ -36,6 +36,14 @@ const extensionAttributeCleaner = `
         el.removeAttribute('bis_skin_checked');
       }
     };
+    const cleanAll = () => {
+      if (typeof document !== 'undefined') {
+        const els = document.querySelectorAll('[bis_skin_checked]');
+        for (let i = 0; i < els.length; i++) clean(els[i]);
+      }
+    };
+    cleanAll();
+    window.addEventListener('DOMContentLoaded', cleanAll);
     const observer = new MutationObserver((mutations) => {
       for (let i = 0; i < mutations.length; i++) {
         const m = mutations[i];

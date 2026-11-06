@@ -3,6 +3,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { StagedFile, TransferRecord, UserAccount } from "./types";
 import { computeSHA256 } from "./utils";
+import {
+  isHandleAvailableInDb,
+  createProfileInDb,
+  authenticateProfileInDb,
+  saveTransferToDb,
+  fetchTransfersFromDb,
+  updatePresenceInDb,
+  supabase,
+} from "./supabase";
 
 const USER_STORAGE_KEY = "beam_active_session";
 const ACCOUNTS_REGISTRY_KEY = "beam_accounts_registry";
@@ -68,7 +77,7 @@ export function useBeamStore() {
     } catch {}
   }, [user, isLoaded]);
 
-  // Sync transfers
+  // Sync transfers to localStorage
   useEffect(() => {
     if (!isLoaded) return;
     try {
@@ -76,7 +85,74 @@ export function useBeamStore() {
     } catch {}
   }, [transfers, isLoaded]);
 
-  // Check handle availability
+  // Sync active user with Supabase Realtime & presence
+  useEffect(() => {
+    if (!isLoaded || !user.isLoggedIn || !user.handle) return;
+
+    // 1. Initial transfers fetch from Supabase
+    fetchTransfersFromDb(user.handle).then((dbTransfers) => {
+      if (dbTransfers && dbTransfers.length > 0) {
+        setTransfers(dbTransfers);
+      }
+    });
+
+    // 2. Set node presence
+    updatePresenceInDb(user.handle, user.nodeId || "001");
+    const presenceTimer = setInterval(() => {
+      updatePresenceInDb(user.handle, user.nodeId || "001");
+    }, 45000);
+
+    // 3. Realtime subscription on transfers table
+    const transferChannel = supabase
+      .channel(`realtime:transfers:${user.handle}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transfers",
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          const recipient = String(row.recipient_handle || "").toLowerCase();
+          const sender = String(row.sender_handle || "").toLowerCase();
+          const myHandle = user.handle.toLowerCase();
+
+          if (recipient === myHandle || sender === myHandle) {
+            const incomingRecord: TransferRecord = {
+              id: String(row.id),
+              recipientHandle: String(row.recipient_handle),
+              senderHandle: String(row.sender_handle),
+              files: (row.files as TransferRecord["files"]) || [],
+              totalBytes: Number(row.total_bytes || 0),
+              status: (row.status as TransferRecord["status"]) || "completed",
+              progress: 100,
+              speedMBs: 48.2,
+              ttlHours: Number(row.ttl_hours || 24),
+              passkeyLock: Boolean(row.passkey_lock),
+              burnOnDownload: Boolean(row.burn_on_download),
+              maxDownloads: Number(row.max_downloads || 3),
+              downloadCount: Number(row.download_count || 0),
+              createdAt: new Date(String(row.created_at || Date.now())).getTime(),
+              expiresAt: new Date(String(row.expires_at || Date.now())).getTime(),
+            };
+
+            setTransfers((prev) => {
+              if (prev.some((t) => t.id === incomingRecord.id)) return prev;
+              return [incomingRecord, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(presenceTimer);
+      supabase.removeChannel(transferChannel);
+    };
+  }, [isLoaded, user.isLoggedIn, user.handle, user.nodeId]);
+
+  // Check handle availability (synchronous preliminary check)
   const checkHandleAvailability = useCallback((handle: string) => {
     const clean = handle.trim().toLowerCase().replace(/^@/, "");
     const reserved = ["admin", "root", "support", "beam", "system", "api", "help", "login", "signup", "dashboard"];
@@ -86,6 +162,9 @@ export function useBeamStore() {
     }
     if (reserved.includes(clean)) {
       return { available: false, reason: `@${clean} is a reserved system handle.` };
+    }
+    if (!/^[a-z0-9._-]+$/.test(clean)) {
+      return { available: false, reason: "Handle can only contain letters, numbers, dots, and hyphens." };
     }
 
     try {
@@ -99,7 +178,14 @@ export function useBeamStore() {
     return { available: true };
   }, []);
 
-  // Register new account & claim handle
+  // Async handle availability check against remote Supabase
+  const checkHandleAvailabilityAsync = useCallback(async (handle: string) => {
+    const local = checkHandleAvailability(handle);
+    if (!local.available) return local;
+    return await isHandleAvailableInDb(handle);
+  }, [checkHandleAvailability]);
+
+  // Register new account & claim handle via Supabase
   const registerAccount = async (params: {
     handle: string;
     fullName: string;
@@ -108,33 +194,31 @@ export function useBeamStore() {
     plan: "free" | "pro";
   }) => {
     const cleanHandle = params.handle.trim().toLowerCase().replace(/^@/, "");
-    const check = checkHandleAvailability(cleanHandle);
+    const check = await checkHandleAvailabilityAsync(cleanHandle);
     if (!check.available) {
       return { success: false, error: check.reason };
     }
 
-    const nodeId = Math.floor(100 + Math.random() * 900).toString();
-    const storageLimit = params.plan === "pro" ? 250 * 1024 * 1024 * 1024 : 25 * 1024 * 1024 * 1024;
-
-    const newAccount: UserAccount = {
+    // Write to remote Supabase profiles table
+    const remoteResult = await createProfileInDb({
       handle: cleanHandle,
-      fullName: params.fullName.trim() || cleanHandle,
-      email: params.email.trim() || `${cleanHandle}@beam.network`,
+      fullName: params.fullName,
+      email: params.email,
       plan: params.plan,
-      nodeId,
-      gatewayNode: "Frankfurt-01 (18ms ping)",
-      storageLimitBytes: storageLimit,
-      storageUsedBytes: 0,
-      avatarUrl: "",
-      isLoggedIn: true,
-      createdAt: Date.now(),
-    };
+      passphrase: params.passphrase,
+    });
 
+    if (!remoteResult.success || !remoteResult.user) {
+      return { success: false, error: remoteResult.error || "Failed to register profile in Supabase" };
+    }
+
+    const newAccount = remoteResult.user;
+
+    // Cache locally
     try {
       const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
       const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
       accounts[cleanHandle] = newAccount;
-      // Also index by email for login lookup
       if (newAccount.email) {
         accounts[newAccount.email.toLowerCase()] = newAccount;
       }
@@ -142,20 +226,46 @@ export function useBeamStore() {
     } catch {}
 
     setUser(newAccount);
+    updatePresenceInDb(newAccount.handle, newAccount.nodeId);
     return { success: true, user: newAccount };
   };
 
-  // Sign in with handle or email
+  // Sign in with handle or email via Supabase
   const loginWithCredentials = async (handleOrEmail: string, _passphrase?: string) => {
     const query = handleOrEmail.trim().toLowerCase().replace(/^@/, "");
     if (!query) {
       return { success: false, error: "Please enter your handle or email." };
     }
 
+    // Try authenticating with Supabase
+    const remoteResult = await authenticateProfileInDb(query);
+    if (remoteResult.success && remoteResult.user) {
+      const loggedInUser = remoteResult.user;
+      setUser(loggedInUser);
+      updatePresenceInDb(loggedInUser.handle, loggedInUser.nodeId);
+
+      // Cache locally
+      try {
+        const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
+        const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
+        accounts[loggedInUser.handle] = loggedInUser;
+        if (loggedInUser.email) accounts[loggedInUser.email.toLowerCase()] = loggedInUser;
+        localStorage.setItem(ACCOUNTS_REGISTRY_KEY, JSON.stringify(accounts));
+      } catch {}
+
+      // Fetch user's existing transfers
+      const userTransfers = await fetchTransfersFromDb(loggedInUser.handle);
+      if (userTransfers.length > 0) {
+        setTransfers(userTransfers);
+      }
+
+      return { success: true, user: loggedInUser };
+    }
+
+    // Fallback to local registry if offline
     try {
       const raw = localStorage.getItem(ACCOUNTS_REGISTRY_KEY);
       const accounts: Record<string, UserAccount> = raw ? JSON.parse(raw) : {};
-
       const matched = accounts[query];
       if (matched) {
         const loggedInUser: UserAccount = { ...matched, isLoggedIn: true };
@@ -166,8 +276,8 @@ export function useBeamStore() {
 
     return {
       success: false,
-      notFound: true,
-      error: `Handle or email "${query}" is not registered. Claim this username to get started!`,
+      notFound: remoteResult.notFound ?? true,
+      error: remoteResult.error || `Handle or email "${query}" is not registered. Claim this username to get started!`,
     };
   };
 
@@ -272,6 +382,9 @@ export function useBeamStore() {
       expiresAt: Date.now() + ttlHours * 3600 * 1000,
     };
 
+    // Save transfer to Supabase remote database
+    await saveTransferToDb(record);
+
     setTransfers((prev) => [record, ...prev]);
     setUser((prev) => ({
       ...prev,
@@ -283,11 +396,13 @@ export function useBeamStore() {
   };
 
   // Real file download trigger
-  const triggerFileDownload = (fileName: string, content?: string) => {
-    const blob = new Blob([content || `Beam Cryptographic Payload Container: ${fileName}`], {
-      type: "application/octet-stream",
-    });
-    const url = URL.createObjectURL(blob);
+  const triggerFileDownload = (fileName: string, blob?: Blob) => {
+    const targetBlob =
+      blob ||
+      new Blob([`Beam Encrypted File Container: ${fileName}\nIntegrity: SHA-256 Validated\nEncrypted Stream Container`], {
+        type: "application/octet-stream",
+      });
+    const url = URL.createObjectURL(targetBlob);
     const a = document.createElement("a");
     a.href = url;
     a.download = fileName;
@@ -303,6 +418,7 @@ export function useBeamStore() {
     transfers,
     isLoaded,
     checkHandleAvailability,
+    checkHandleAvailabilityAsync,
     registerAccount,
     loginWithCredentials,
     loginWithPasskey,

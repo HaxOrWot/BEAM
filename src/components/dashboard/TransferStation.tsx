@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   MapPin,
   UploadCloud,
@@ -14,8 +14,11 @@ import {
   ArrowRight,
   RefreshCw,
   CheckCircle2,
+  Radio,
 } from "lucide-react";
 import { useBeamStore } from "@/lib/store";
+import { useBeamP2P } from "@/lib/p2p/P2PProvider";
+import { fetchActivePeers } from "@/lib/supabase";
 import { formatBytes } from "@/lib/utils";
 
 interface TransferStationProps {
@@ -24,11 +27,12 @@ interface TransferStationProps {
 }
 
 export const TransferStation: React.FC<TransferStationProps> = ({
-  initialRecipient = "sarah_design",
+  initialRecipient = "",
   targetInputRef,
 }) => {
-  const { stagedFiles, addRealFiles, removeStagedFile, clearStagedFiles, dispatchBeam } =
+  const { user, stagedFiles, transfers, addRealFiles, removeStagedFile, clearStagedFiles, dispatchBeam } =
     useBeamStore();
+  const { status: p2pStatus, sendFiles } = useBeamP2P();
 
   const [recipient, setRecipient] = useState(initialRecipient);
   const [passkeyLock, setPasskeyLock] = useState(true);
@@ -37,8 +41,36 @@ export const TransferStation: React.FC<TransferStationProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [activePeers, setActivePeers] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync initialRecipient if prop updates
+  useEffect(() => {
+    if (initialRecipient) {
+      setRecipient(initialRecipient);
+    }
+  }, [initialRecipient]);
+
+  // Load online peers and recent recipients from Supabase
+  useEffect(() => {
+    fetchActivePeers().then((peers) => {
+      const filtered = peers.filter((p) => p && p.toLowerCase() !== user.handle.toLowerCase());
+      if (filtered.length > 0) {
+        setActivePeers(filtered);
+      } else {
+        // Fallback to recent recipients from transfer log
+        const recentTransfers = Array.from(
+          new Set(
+            transfers
+              .map((t) => t.recipientHandle)
+              .filter((h) => h && h.toLowerCase() !== user.handle.toLowerCase())
+          )
+        ).slice(0, 4);
+        setActivePeers(recentTransfers);
+      }
+    });
+  }, [user.handle, transfers]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -69,6 +101,15 @@ export const TransferStation: React.FC<TransferStationProps> = ({
     setIsSending(true);
     setSendSuccess(false);
 
+    // 1. Kick off direct WebRTC P2P stream if peer is reachable
+    const rawFiles = stagedFiles
+      .map((s) => s.file)
+      .filter((f): f is File => Boolean(f));
+    if (rawFiles.length > 0) {
+      sendFiles(recipient, rawFiles).catch(() => {});
+    }
+
+    // 2. Persist manifest and audit record to Supabase
     await dispatchBeam({
       recipientHandle: recipient,
       ttlHours: 24,
@@ -80,8 +121,8 @@ export const TransferStation: React.FC<TransferStationProps> = ({
     setTimeout(() => {
       setIsSending(false);
       setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 3000);
-    }, 1200);
+      setTimeout(() => setSendSuccess(false), 3500);
+    }, 1500);
   };
 
   const totalBytes = stagedFiles.reduce((acc, f) => acc + f.size, 0);
@@ -121,20 +162,25 @@ export const TransferStation: React.FC<TransferStationProps> = ({
           )}
         </div>
 
-        {/* Recent collaborator pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-1">
-          <span className="font-mono text-xs text-outline whitespace-nowrap">Recents:</span>
-          {["marcus_vfx", "elena_core", "dev_relay"].map((peer) => (
-            <button
-              key={peer}
-              type="button"
-              onClick={() => setRecipient(peer)}
-              className="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high px-2.5 py-1 rounded-full text-on-surface-variant font-mono text-xs transition-colors border border-white/5 shrink-0"
-            >
-              <span>@{peer}</span>
-            </button>
-          ))}
-        </div>
+        {/* Active peer suggestions / recents */}
+        {activePeers.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pt-1">
+            <span className="font-mono text-xs text-outline whitespace-nowrap flex items-center gap-1">
+              <Radio className="w-3 h-3 text-secondary animate-pulse" /> Nodes:
+            </span>
+            {activePeers.map((peer) => (
+              <button
+                key={peer}
+                type="button"
+                onClick={() => setRecipient(peer)}
+                className="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high px-2.5 py-1 rounded-full text-on-surface font-mono text-xs transition-colors border border-white/5 shrink-0"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                <span>@{peer}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Real High-Depth Dropzone Core */}
@@ -315,6 +361,28 @@ export const TransferStation: React.FC<TransferStationProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Live WebRTC Streaming Bar */}
+        {p2pStatus.isStreaming && (
+          <div className="bg-surface-container p-3.5 rounded-2xl flex flex-col gap-2 border border-secondary/30 animate-pulse">
+            <div className="flex items-center justify-between font-mono text-xs text-secondary">
+              <span className="flex items-center gap-1.5 font-semibold">
+                <Radio className="w-3.5 h-3.5 animate-spin" /> Streaming to @{p2pStatus.peerHandle}
+              </span>
+              <span>{p2pStatus.speedMBs} MB/s • {p2pStatus.percent}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+              <div
+                className="h-full bg-secondary transition-all duration-300"
+                style={{ width: `${p2pStatus.percent}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-outline font-mono text-[10px]">
+              <span>{p2pStatus.fileName}</span>
+              <span>{formatBytes(p2pStatus.bytesTransferred)} / {formatBytes(p2pStatus.totalBytes)}</span>
+            </div>
+          </div>
+        )}
 
         {/* Master Dispatch Button */}
         <button

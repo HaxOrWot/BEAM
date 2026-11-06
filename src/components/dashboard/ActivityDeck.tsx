@@ -10,12 +10,15 @@ import {
   Send,
   FileCode,
   ShieldCheck,
+  Radio,
 } from "lucide-react";
 import { useBeamStore } from "@/lib/store";
+import { useBeamP2P } from "@/lib/p2p/P2PProvider";
 import { formatBytes, formatTimeAgo } from "@/lib/utils";
 
 export const ActivityDeck: React.FC = () => {
   const { user, transfers, triggerFileDownload } = useBeamStore();
+  const { getReceivedBlob } = useBeamP2P();
   const [activeTab, setActiveTab] = useState<"incoming" | "sent">("incoming");
   const [copied, setCopied] = useState(false);
 
@@ -128,31 +131,39 @@ export const ActivityDeck: React.FC = () => {
                     </span>
                   </div>
 
-                  {item.files.map((file, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between bg-surface-container-lowest p-2.5 rounded-xl border border-white/5"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                        <FileCode className="w-6 h-6 text-secondary shrink-0" />
-                        <div className="min-w-0">
-                          <div className="font-mono text-xs text-on-surface truncate font-medium">
-                            {file.name}
-                          </div>
-                          <div className="font-mono text-[10px] text-outline">
-                            {formatBytes(file.size)} • {file.hash}
+                  {item.files.map((file, idx) => {
+                    const receivedBlob = getReceivedBlob(file.name);
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between bg-surface-container-lowest p-2.5 rounded-xl border border-white/5"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                          <FileCode className="w-6 h-6 text-secondary shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 font-mono text-xs text-on-surface truncate font-medium">
+                              <span>{file.name}</span>
+                              {receivedBlob && (
+                                <span className="font-mono text-[9px] bg-secondary/15 text-secondary px-1.5 py-0.2 rounded">
+                                  Live P2P
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[10px] text-outline">
+                              {formatBytes(file.size)} • {file.hash}
+                            </div>
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => triggerFileDownload(file.name, receivedBlob)}
+                          className="bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all shrink-0"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => triggerFileDownload(file.name)}
-                        className="bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all shrink-0"
-                      >
-                        <Download className="w-3.5 h-3.5" /> Download
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   <div className="flex items-center justify-between text-outline font-mono text-[10px] px-1">
                     <span className="flex items-center gap-1">

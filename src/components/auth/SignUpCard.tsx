@@ -20,7 +20,7 @@ import { useBeamStore } from "@/lib/store";
 export const SignUpCard: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { checkHandleAvailability, registerAccount } = useBeamStore();
+  const { checkHandleAvailability, checkHandleAvailabilityAsync, registerAccount } = useBeamStore();
 
   const [handle, setHandle] = useState("");
   const [fullName, setFullName] = useState("");
@@ -51,13 +51,25 @@ export const SignUpCard: React.FC = () => {
       return;
     }
 
-    const res = checkHandleAvailability(clean);
-    if (res.available) {
-      setStatus({ available: true, message: `@${clean} is available!` });
-    } else {
-      setStatus({ available: false, message: res.reason || "Handle unavailable" });
+    const local = checkHandleAvailability(clean);
+    if (!local.available) {
+      setStatus({ available: false, message: local.reason || "Handle unavailable" });
+      return;
     }
-  }, [handle, checkHandleAvailability]);
+
+    setStatus({ available: true, message: `Checking @${clean}...` });
+
+    const timer = setTimeout(async () => {
+      const res = await checkHandleAvailabilityAsync(clean);
+      if (res.available) {
+        setStatus({ available: true, message: `@${clean} is available!` });
+      } else {
+        setStatus({ available: false, message: res.reason || "Handle unavailable" });
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [handle, checkHandleAvailability, checkHandleAvailabilityAsync]);
 
   // Calculate passphrase strength
   const getStrength = (pass: string) => {
