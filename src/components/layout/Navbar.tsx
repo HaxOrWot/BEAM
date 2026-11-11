@@ -14,6 +14,7 @@ export const Navbar: React.FC = () => {
   const [queryHandle, setQueryHandle] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   // Close menu on outside click
   useEffect(() => {
@@ -24,6 +25,15 @@ export const Navbar: React.FC = () => {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Handle scroll for navbar transparency
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -51,15 +61,19 @@ export const Navbar: React.FC = () => {
   ];
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-white/5">
+    <header 
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+        scrolled ? "bg-surface/90 backdrop-blur-lg border-b border-white/5 shadow-lg" : "bg-surface/80 backdrop-blur-xl border-b border-white/5"
+      }`}
+    >
       <div className="h-20 max-w-7xl mx-auto px-6 flex items-center justify-between gap-4">
         {/* Brand & Recipient Lookup */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="hover:opacity-90 transition-opacity">
-            <Logo size={34} />
+          <Link href="/" className="hover:opacity-90 transition-opacity transform hover:scale-105">
+            <Logo size={36} />
           </Link>
 
-          <form onSubmit={handleSearch} className="hidden xl:flex items-center bg-surface-container-low px-3 py-1.5 rounded-full border border-white/5">
+          <form onSubmit={handleSearch} className="hidden xl:flex items-center bg-surface-container px-4 py-2 rounded-full border border-white/10 transition-all focus-within:border-primary/50 focus-within:shadow-md">
             <Search className="w-4 h-4 text-outline mr-2" />
             <span className="font-mono text-xs text-outline mr-1">@</span>
             <input
@@ -67,7 +81,7 @@ export const Navbar: React.FC = () => {
               value={queryHandle}
               onChange={(e) => setQueryHandle(e.target.value)}
               placeholder="recipient username"
-              className="bg-transparent text-xs text-on-surface placeholder:text-outline font-mono focus:outline-none w-36"
+              className="bg-transparent text-xs text-on-surface placeholder:text-outline font-mono focus:outline-none w-40"
             />
           </form>
         </div>
@@ -84,10 +98,10 @@ export const Navbar: React.FC = () => {
               <Link
                 key={link.label}
                 href={link.href}
-                className={`px-4 py-1.5 rounded-full text-sm font-heading font-medium transition-colors ${
+                className={`px-4 py-1.5 rounded-full text-sm font-heading font-medium transition-all ${
                   isActive
-                    ? "bg-primary-container text-on-primary-container"
-                    : "text-on-surface-variant hover:text-on-surface"
+                    ? "bg-primary-container text-on-primary-container shadow-lg shadow-primary/20"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
                 }`}
               >
                 {link.label}
@@ -103,23 +117,23 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 bg-surface-container px-3.5 py-1.5 rounded-full hover:bg-surface-container-high transition-colors border border-white/10"
+                className="flex items-center gap-2 bg-surface-container px-4 py-2 rounded-full hover:bg-surface-container-high transition-all border border-white/10 hover:shadow-lg group"
               >
-                <div className="w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-mono text-xs font-semibold">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-container via-primary to-secondary text-on-primary-container flex items-center justify-center font-mono text-xs font-semibold shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all">
                   {user.handle.slice(0, 2).toUpperCase()}
                 </div>
-                <span className="font-mono text-xs text-on-surface font-medium">@{user.handle}</span>
-                <UserCheck className="w-3.5 h-3.5 text-secondary" />
-                <ChevronDown className="w-3 h-3 text-outline" />
+                <span className="font-mono text-xs text-on-surface font-medium hidden sm:inline">@{user.handle}</span>
+                <UserCheck className="w-4 h-4 text-secondary" />
+                <ChevronDown className={`w-4 h-4 text-outline transition-transform ${menuOpen ? "rotate-180" : ""}`} />
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-surface-container-low border border-white/10 rounded-2xl p-2 shadow-2xl z-50 flex flex-col gap-1 backdrop-blur-xl">
-                  <div className="px-3 py-2 border-b border-white/5 mb-1">
-                    <div className="font-mono text-xs text-on-surface font-semibold truncate">
+                <div className="absolute right-0 mt-2 w-64 bg-surface-container-low border border-white/10 rounded-2xl p-3 shadow-2xl z-50 flex flex-col gap-2 backdrop-blur-2xl animate-fade-in">
+                  <div className="px-4 py-3 border-b border-white/5 mb-1">
+                    <div className="font-mono text-sm text-on-surface font-semibold truncate">
                       @{user.handle}
                     </div>
-                    <div className="font-mono text-[10px] text-outline">
+                    <div className="font-mono text-[10px] text-outline mt-0.5">
                       Node #{user.nodeId || "001"} • {user.plan.toUpperCase()}
                     </div>
                   </div>
@@ -127,18 +141,22 @@ export const Navbar: React.FC = () => {
                   <Link
                     href="/dashboard"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-on-surface hover:bg-surface-container transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-on-surface hover:bg-surface-container transition-all group"
                   >
-                    <Send className="w-3.5 h-3.5 text-primary" />
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                      <Send className="w-4 h-4" />
+                    </div>
                     <span>Transfer Dashboard</span>
                   </Link>
 
                   <Link
                     href="/dashboard"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-on-surface hover:bg-surface-container transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-on-surface hover:bg-surface-container transition-all group"
                   >
-                    <Shield className="w-3.5 h-3.5 text-secondary" />
+                    <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-on-secondary transition-colors">
+                      <Shield className="w-4 h-4" />
+                    </div>
                     <span>Personal Vault</span>
                   </Link>
 
@@ -147,9 +165,11 @@ export const Navbar: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-error hover:bg-error/10 transition-colors w-full text-left"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-error hover:bg-error/10 transition-all group"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center group-hover:bg-error group-hover:text-on-error transition-colors">
+                      <LogOut className="w-4 h-4" />
+                    </div>
                     <span>Sign Out</span>
                   </button>
                 </div>
@@ -159,13 +179,13 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="text-sm font-heading text-on-surface-variant hover:text-on-surface px-3 py-1.5 transition-colors"
+                className="text-sm font-heading text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-full transition-colors hover:bg-surface-container"
               >
                 Login
               </Link>
               <Link
                 href="/signup"
-                className="text-sm font-heading bg-primary-container text-on-primary-container px-4 py-1.5 rounded-full hover:bg-primary hover:text-on-primary transition-all font-medium shadow-sm"
+                className="text-sm font-heading bg-gradient-to-r from-primary-container via-primary to-secondary text-on-primary-container px-5 py-2 rounded-full hover:shadow-lg hover:shadow-primary/30 hover:scale-105 transition-all font-medium"
               >
                 Sign Up
               </Link>
